@@ -8,22 +8,36 @@ import { useTimer } from "@/state/hooks/useTimer";
 import { useQueryClient } from "@tanstack/react-query";
 import { projectsClient } from "@/api/clients/projectsClient";
 
+type TaskInput = {
+  id?: string;
+  name: string;
+  project_id: string;
+  project?: Project;
+  status?: TaskStatus;
+  work_dates?: string[];
+  last_used?: string;
+};
+
 interface StartTaskButtonProps {
-  task: Task;
-  projectId: string;
+  /** The task to start/resume. If only name and project_id are provided, will create a new task. */
+  task: TaskInput;
+  /** Callback when the task is successfully started */
   onTaskUpdate?: () => void;
   className?: string;
   variant?: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive";
   size?: "default" | "sm" | "lg" | "icon";
+  children?: React.ReactNode;
+  showIcon?: boolean;
 }
 
 export function StartTaskButton({
   task,
-  projectId,
   onTaskUpdate,
   className,
   variant = "default",
   size = "default",
+  children,
+  showIcon = true,
 }: StartTaskButtonProps) {
   const { toast } = useToast();
   const { startTimer } = useTimer();
@@ -31,39 +45,52 @@ export function StartTaskButton({
 
   const handleStartTask = useCallback(async () => {
     try {
-      // Get the full project data if not already available
+      // Get or create the project
       let project: Project;
-      if ('project' in task && task.project) {
+      if (task.project) {
         project = task.project;
       } else {
-        const projectData = await projectsClient.getById(projectId);
+        const projectData = await projectsClient.getById(task.project_id);
         if (!projectData) {
           throw new Error('Project not found');
         }
         project = projectData;
       }
 
-      // Update task status and work dates
+      // Start the timer first to provide immediate feedback
+      startTimer(task.name, project);
+
+      // Prepare task updates
       const today = new Date().toISOString().split('T')[0];
       const workDates = new Set(task.work_dates || []);
       workDates.add(today);
       
-      const updates = {
+      const taskUpdates = {
         status: 'in_progress' as TaskStatus,
         work_dates: Array.from(workDates),
         last_used: new Date().toISOString(),
       };
 
-      // Start the timer with the full project data
-      startTimer(task.name, project);
-
-      // Update the task in the database
-      await tasksClient.update(task.id, updates);
+      // Update or create the task
+      if (task.id) {
+        // Existing task - update it
+        await tasksClient.update(task.id, taskUpdates);
+      } else {
+        // New task - create it
+        await tasksClient.create({
+          name: task.name,
+          project_id: task.project_id,
+          ...taskUpdates
+        });
+      }
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['time-entries-day'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+        queryClient.invalidateQueries({ queryKey: ['recent-tasks'] }),
+        queryClient.invalidateQueries({ queryKey: ['time-entries-day'] }),
+        queryClient.invalidateQueries({ queryKey: ['time-entries-week'] })
+      ]);
 
       // Show success toast
       toast({
@@ -77,11 +104,11 @@ export function StartTaskButton({
       console.error('Error starting task:', error);
       toast({
         title: "Error",
-        description: "Failed to start task. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to start task. Please try again.",
         variant: "destructive",
       });
     }
-  }, [task, projectId, onTaskUpdate, startTimer, queryClient, toast]);
+  }, [task, onTaskUpdate, startTimer, queryClient, toast]);
 
   return (
     <Button
@@ -90,8 +117,8 @@ export function StartTaskButton({
       onClick={handleStartTask}
       className={className}
     >
-      <Play className="h-4 w-4 mr-2" />
-      Start
+      {showIcon && <Play className="h-4 w-4 mr-2" />}
+      {children || 'Start'}
     </Button>
   );
 }

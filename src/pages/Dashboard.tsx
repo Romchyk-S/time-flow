@@ -1,12 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
-import { Clock, ListTodo, FolderKanban, TrendingUp, Clock3 } from "lucide-react";
+import { Clock, ListTodo, FolderKanban, TrendingUp, Clock3, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTimer } from "@/state/hooks/useTimer";
 import { useProjects } from "@/state/hooks/useProjects";
 import { useAutocomplete } from "@/state/hooks/useAutocomplete";
-import { useTimeEntriesForDay } from "@/state/hooks/useTimeEntries";
 import { TimerDisplay } from "@/components/timer/TimerDisplay";
-import { TimerControls } from "@/components/timer/TimerControls";
 import { TaskInput } from "@/components/timer/TaskInput";
 import { ProjectSelect } from "@/components/timer/ProjectSelect";
 import { formatDurationLong } from "@/state/utils/timeUtils";
@@ -16,12 +15,17 @@ import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
 import { tasksClient } from "@/api/clients/tasksClient";
 import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { TaskWithProject } from "@/types";
+import { StartTaskButton } from "@/components/tasks/StartTaskButton";
 
 const Dashboard = () => {
   const { projects } = useProjects();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [taskNameInput, setTaskNameInput] = useState("");
   const { suggestions, fetchSuggestions } = useAutocomplete(projectId);
+  const queryClient = useQueryClient();
+  const todayStartStr = todayStart();
+  const todayEndStr = dayEnd(new Date());
+  
   const {
     isRunning,
     elapsed,
@@ -39,22 +43,35 @@ const Dashboard = () => {
     if (projectId) fetchSuggestions(taskNameInput);
   }, [projectId, taskNameInput, fetchSuggestions]);
 
-  const handleStart = useCallback(() => {
-    if (!selectedProject) return;
-    startTimer(taskNameInput, selectedProject);
-  }, [selectedProject, taskNameInput, startTimer]);
+  const handleTaskUpdated = useCallback(() => {
+    // Invalidate both recent tasks and today's entries to ensure UI is up to date
+    queryClient.invalidateQueries({ queryKey: ["recent-tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["time-entries-day", todayStartStr] });
+    queryClient.invalidateQueries({ queryKey: ["time-entries-week"] });
+  }, [queryClient, todayStartStr]);
 
-  const handleStop = useCallback(() => {
-    stopTimer();
-  }, [stopTimer]);
+  const handleStartNewTask = useCallback(async () => {
+    if (!selectedProject || !taskNameInput.trim()) return;
+    
+    // Create a minimal task object for the StartTaskButton
+    const newTask = {
+      name: taskNameInput.trim(),
+      project_id: selectedProject.id,
+      project: selectedProject,
+      status: 'not_started' as const,
+      work_dates: [] as string[]
+    };
+    
+    // Clear the input after starting
+    setTaskNameInput('');
+    
+    return newTask;
+  }, [selectedProject, taskNameInput]);
 
   const handleSelectSuggestion = useCallback((name: string) => {
     setTaskNameInput(name);
   }, []);
 
-  const todayStartStr = todayStart();
-  const todayEndStr = dayEnd(new Date());
-  const queryClient = useQueryClient();
   
   const todayEntries = useQuery({
     queryKey: ["time-entries-day", todayStartStr],
@@ -81,11 +98,6 @@ const Dashboard = () => {
     enabled: !!todayEntries.data,
   });
 
-  const handleTaskUpdated = () => {
-    // Invalidate both recent tasks and today's entries to ensure UI is up to date
-    queryClient.invalidateQueries({ queryKey: ["recent-tasks"] });
-    queryClient.invalidateQueries({ queryKey: ["time-entries-day", todayStartStr] });
-  };
   const todaySeconds = (todayEntries.data ?? []).reduce((s, e) => s + (e.duration ?? 0), 0);
 
   const weekStart = new Date();
@@ -140,7 +152,7 @@ const Dashboard = () => {
             </div>
             <div className="flex items-end gap-2">
               {isRunning ? (
-                <>
+                <div className="flex items-center gap-2">
                   <TimerDisplay
                     isRunning={true}
                     elapsedTime={elapsed}
@@ -148,15 +160,32 @@ const Dashboard = () => {
                     projectName={projectName}
                     projectColor={projectColor}
                   />
-                  <TimerControls isRunning onStart={() => {}} onStop={handleStop} />
-                </>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={stopTimer}
+                    className="gap-1.5"
+                  >
+                    <Square className="h-4 w-4" />
+                    Stop
+                  </Button>
+                </div>
               ) : (
-                <TimerControls
-                  isRunning={false}
-                  onStart={handleStart}
-                  onStop={handleStop}
-                  disabled={!selectedProject || !taskNameInput.trim()}
-                />
+                <StartTaskButton
+                  task={{
+                    name: taskNameInput.trim(),
+                    project_id: selectedProject?.id || '',
+                    project: selectedProject,
+                    status: 'not_started',
+                    work_dates: []
+                  }}
+                  onTaskUpdate={handleTaskUpdated}
+                  variant="default"
+                  size="sm"
+                  className={!selectedProject || !taskNameInput.trim() ? 'opacity-50 cursor-not-allowed' : ''}
+                >
+                  Start
+                </StartTaskButton>
               )}
             </div>
           </div>

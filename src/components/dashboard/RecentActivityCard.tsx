@@ -70,8 +70,11 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
             </div>
             
             <StartTaskButton 
-              task={task}
-              projectId={task.project_id}
+              task={{
+                ...task,
+                project_id: task.project_id,
+                project: task.project
+              }}
               onTaskUpdate={() => {
                 onStatusUpdate?.();
                 onTaskUpdated?.();
@@ -79,7 +82,10 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
               variant="ghost"
               size="sm"
               className="h-8"
-            />
+              showIcon={false}
+            >
+              Start
+            </StartTaskButton>
           </div>
         </CardContent>
       </Card>

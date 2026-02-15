@@ -29,20 +29,25 @@ export function useTimer() {
   }, [startTime]);
 
   const refreshRunning = useCallback(async () => {
-    const running = await timeEntriesClient.getRunning();
-    if (running) {
-      const task = await tasksClient.getById(running.task_id);
-      const project = task ? await projectsClient.getById(task.project_id) : null;
-      useTimerStore.getState().setRunning({
-        entryId: running.id,
-        taskId: running.task_id,
-        taskName: task?.name ?? null,
-        projectId: task?.project_id ?? null,
-        projectName: project?.name ?? null,
-        projectColor: project?.color ?? null,
-        startTime: running.start_time,
-      });
-    } else {
+    try {
+      const running = await timeEntriesClient.getRunning();
+      if (running) {
+        const task = await tasksClient.getById(running.task_id);
+        const project = task ? await projectsClient.getById(task.project_id) : null;
+        useTimerStore.getState().setRunning({
+          entryId: running.id,
+          taskId: running.task_id,
+          taskName: task?.name ?? null,
+          projectId: task?.project_id ?? null,
+          projectName: project?.name ?? null,
+          projectColor: project?.color ?? null,
+          startTime: running.start_time,
+        });
+      } else {
+        useTimerStore.getState().clearRunning();
+      }
+    } catch (error) {
+      console.error('Error refreshing running timer:', error);
       useTimerStore.getState().clearRunning();
     }
   }, []);
@@ -81,7 +86,9 @@ export function useTimer() {
 
   const stopTimer = useCallback(async () => {
     if (!entryId || !startTime || !taskId) {
-      console.warn('[useTimer] Missing required data to stop timer:', { entryId, startTime, taskId });
+      const errorMsg = 'Missing required data to stop timer';
+      console.warn('[useTimer]', errorMsg, { entryId, startTime, taskId });
+      setError(errorMsg);
       return;
     }
     
@@ -98,27 +105,26 @@ export function useTimer() {
       const durationSeconds = Math.max(1, Math.floor(durationMs / 1000));
       console.log(`[useTimer] Rounded to: ${durationSeconds} seconds`);
       
+      // Clear the running timer state first to prevent UI glitches
+      useTimerStore.getState().clearRunning();
+      
       try {
-        // Stop the time entry with original milliseconds
-        console.log('[useTimer] Stopping time entry:', { entryId, durationMs });
+        // Stop the time entry
         await timeEntriesClient.stop(entryId, durationMs);
         
-        // Update the task's execution duration (will be converted to minutes in the client)
-        console.log('[useTimer] Updating task execution duration:', { taskId, durationSeconds });
+        // Update the task's total duration
         await tasksClient.updateExecutionDuration(taskId, durationSeconds);
         
-        // Clear the running timer state
-        useTimerStore.getState().clearRunning();
         console.log('[useTimer] Timer stopped and state cleared');
         
-        // Invalidate relevant queries to refresh UI
-        const invalidationPromises = [
+        // Invalidate relevant queries
+        await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['tasks'] }),
           queryClient.invalidateQueries({ queryKey: ['recent-tasks'] }),
-          queryClient.invalidateQueries({ queryKey: ['time-entries-day'] })
-        ];
+          queryClient.invalidateQueries({ queryKey: ['time-entries-day'] }),
+          queryClient.invalidateQueries({ queryKey: ['time-entries-week'] }),
+        ]);
         
-        await Promise.all(invalidationPromises);
         console.log('[useTimer] Cache invalidated');
         
       } catch (updateError) {
@@ -127,15 +133,12 @@ export function useTimer() {
       }
       
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[useTimer] Failed to stop timer:', {
-        error: errorMessage,
-        taskId,
-        entryId,
-        startTime
-      });
-      setError('Failed to stop timer. Please try again.');
-      throw error; // Re-throw to allow error handling in the component
+      const errorMsg = error instanceof Error ? error.message : 'Failed to stop timer';
+      console.error('[useTimer] Failed to stop timer:', { error, taskId, entryId, startTime });
+      setError(errorMsg);
+      // Re-fetch running timer state in case of error
+      refreshRunning();
+      throw error;
     }
   }, [entryId, startTime, taskId]);
 

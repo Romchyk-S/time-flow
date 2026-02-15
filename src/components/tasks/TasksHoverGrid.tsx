@@ -1,7 +1,6 @@
 import { HoverEffect } from "@/components/ui/hover-effect";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { formatDuration } from "@/lib/utils";
-import { parseIsoDuration } from "@/lib/time-utils";
 import type { TaskWithProject } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 import { tasksClient } from "@/api/clients/tasksClient";
@@ -45,16 +44,17 @@ export function TasksHoverGrid({
     }
   };
   const items = tasks.map(task => {
-    // Parse the duration to a formatted string
+    // Format total_duration (stored in minutes) to a human-readable string
     let durationText = 'No time tracked';
-    if (task.execution_duration) {
-      try {
-        const durationInSeconds = typeof task.execution_duration === 'string' 
-          ? parseIsoDuration(task.execution_duration)
-          : task.execution_duration;
-        durationText = formatDuration(String(durationInSeconds * 1000));
-      } catch (e) {
-        console.error('Error formatting duration:', e);
+    if (task.total_duration) {
+      const minutes = task.total_duration;
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      
+      if (hours > 0) {
+        durationText = `${hours}h ${remainingMinutes}m`;
+      } else {
+        durationText = `${minutes}m`;
       }
     }
 
@@ -135,7 +135,7 @@ export function TasksHoverGrid({
 
   return (
     <div className="max-w-7xl mx-auto px-4">
-<HoverEffect 
+      <HoverEffect 
         items={items} 
         onEdit={onEditTask}
         onDelete={handleDelete}
