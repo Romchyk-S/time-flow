@@ -60,87 +60,140 @@ export function useTimer() {
     async (taskNameInput: string, project: Project) => {
       setError(null);
       const name = taskNameInput.trim();
-      if (!name || !project.id) {
-        setError("Task name and project are required");
-        return;
+      
+      try {
+        if (!name || !project?.id) {
+          throw new Error("Task name and project are required");
+        }
+
+        console.log('[useTimer] Starting timer for task:', { name, projectId: project.id });
+        
+        // Find or create task
+        let task: Task | null = null;
+        try {
+          task = await tasksClient.findByNameAndProject(name, project.id);
+          if (!task) {
+            console.log('[useTimer] Task not found, creating new task');
+            task = await tasksClient.create({ 
+              name, 
+              project_id: project.id,
+              work_dates: [formatDateKey(new Date())]
+            });
+            // Update status separately since it's not in the create type
+            await tasksClient.update(task.id, { status: 'in_progress' });
+          }
+        } catch (taskError) {
+          console.error('[useTimer] Error finding/creating task:', taskError);
+          throw new Error('Failed to find or create task');
+        }
+
+        try {
+          // Ensure work date is added
+          const todayKey = formatDateKey(new Date());
+          await tasksClient.addWorkDateIfNeeded(task.id, todayKey);
+          
+          // Start time entry
+          const entry = await timeEntriesClient.start(task.id);
+          console.log('[useTimer] Time entry created:', entry.id);
+          
+          // Update store
+          useTimerStore.getState().setRunning({
+            entryId: entry.id,
+            taskId: task.id,
+            taskName: task.name,
+            projectId: project.id,
+            projectName: project.name,
+            projectColor: project.color,
+            startTime: entry.start_time,
+          });
+          
+          return true;
+          
+        } catch (entryError) {
+          console.error('[useTimer] Error starting time entry:', entryError);
+          throw new Error('Failed to start time entry');
+        }
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to start timer';
+        console.error('[useTimer] Error in startTimer:', { error, name, projectId: project?.id });
+        setError(errorMessage);
+        return false;
       }
-      let task: Task | null = await tasksClient.findByNameAndProject(name, project.id);
-      if (!task) {
-        task = await tasksClient.create({ name, project_id: project.id });
-      }
-      const todayKey = formatDateKey(new Date());
-      await tasksClient.addWorkDateIfNeeded(task.id, todayKey);
-      const entry = await timeEntriesClient.start(task.id);
-      useTimerStore.getState().setRunning({
-        entryId: entry.id,
-        taskId: task.id,
-        taskName: task.name,
-        projectId: project.id,
-        projectName: project.name,
-        projectColor: project.color,
-        startTime: entry.start_time,
-      });
     },
     []
   );
 
   const stopTimer = useCallback(async () => {
+    console.log('[useTimer] stopTimer called', { entryId, startTime, taskId });
+    
+    // Validate required data
     if (!entryId || !startTime || !taskId) {
       const errorMsg = 'Missing required data to stop timer';
       console.warn('[useTimer]', errorMsg, { entryId, startTime, taskId });
       setError(errorMsg);
-      return;
+      return false;
     }
     
     setError(null);
     
     try {
-      console.log('[useTimer] Stopping timer for task:', taskId);
-      
-      // Calculate duration in milliseconds
+      // Calculate duration
       const durationMs = timerService.calculateDuration(startTime);
-      console.log(`[useTimer] Calculated duration: ${durationMs}ms`);
-      
-      // Convert to seconds and ensure we have at least 1 second
       const durationSeconds = Math.max(1, Math.floor(durationMs / 1000));
-      console.log(`[useTimer] Rounded to: ${durationSeconds} seconds`);
+      console.log('[useTimer] Stopping timer', {
+        taskId,
+        entryId,
+        durationMs,
+        durationSeconds,
+        startTime: new Date(startTime).toISOString()
+      });
       
-      // Clear the running timer state first to prevent UI glitches
+      // Clear the running state immediately to prevent double-clicks
       useTimerStore.getState().clearRunning();
       
-      try {
-        // Stop the time entry
-        await timeEntriesClient.stop(entryId, durationMs);
-        
-        // Update the task's total duration
-        await tasksClient.updateExecutionDuration(taskId, durationSeconds);
-        
-        console.log('[useTimer] Timer stopped and state cleared');
-        
-        // Invalidate relevant queries
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['tasks'] }),
-          queryClient.invalidateQueries({ queryKey: ['recent-tasks'] }),
-          queryClient.invalidateQueries({ queryKey: ['time-entries-day'] }),
-          queryClient.invalidateQueries({ queryKey: ['time-entries-week'] }),
-        ]);
-        
-        console.log('[useTimer] Cache invalidated');
-        
-      } catch (updateError) {
-        console.error('[useTimer] Error during timer stop operations:', updateError);
-        throw updateError;
-      }
+      // Stop the time entry
+      console.log('[useTimer] Stopping time entry', { entryId, durationMs });
+      await timeEntriesClient.stop(entryId, durationMs);
+      
+      // Update task's execution duration
+      console.log('[useTimer] Updating task execution duration', { taskId, durationSeconds });
+      await tasksClient.updateExecutionDuration(taskId, durationSeconds);
+      
+      // Invalidate relevant queries
+      console.log('[useTimer] Invalidating queries');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+        queryClient.invalidateQueries({ queryKey: ['recent-tasks'] }),
+        queryClient.invalidateQueries({ queryKey: ['time-entries-day'] }),
+        queryClient.invalidateQueries({ queryKey: ['time-entries-week'] }),
+        queryClient.invalidateQueries({ queryKey: ['time-entries-range'] }),
+      ]);
+      
+      console.log('[useTimer] Timer stopped successfully');
+      return true;
       
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to stop timer';
-      console.error('[useTimer] Failed to stop timer:', { error, taskId, entryId, startTime });
-      setError(errorMsg);
-      // Re-fetch running timer state in case of error
-      refreshRunning();
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error stopping timer';
+      console.error('[useTimer] Error stopping timer:', {
+        error: errorMessage,
+        taskId,
+        entryId,
+        startTime,
+        originalError: error
+      });
+      
+      // Try to restore the running state if we failed to stop
+      try {
+        await refreshRunning();
+      } catch (refreshError) {
+        console.error('[useTimer] Failed to refresh running state after error:', refreshError);
+      }
+      
+      setError(errorMessage);
+      return false;
     }
-  }, [entryId, startTime, taskId]);
+  }, [entryId, startTime, taskId, queryClient]);
 
   return {
     isRunning,
