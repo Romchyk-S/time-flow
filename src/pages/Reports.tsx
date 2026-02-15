@@ -15,8 +15,8 @@ import { ExportButton, type ExportScope } from "@/components/reports/ExportButto
 import { format } from "date-fns";
 
 export default function Reports() {
-  const [preset, setPreset] = useState<PresetKey>("this_week");
-  const initialRange = useMemo(() => getPresetRange("this_week"), []);
+  const [preset, setPreset] = useState<PresetKey>("today");
+  const initialRange = useMemo(() => getPresetRange("today"), []);
   const [customStart, setCustomStart] = useState<Date>(() => initialRange.start);
   const [customEnd, setCustomEnd] = useState<Date>(() => initialRange.end);
 

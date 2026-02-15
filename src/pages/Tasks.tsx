@@ -21,11 +21,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ProjectSelect } from "@/components/timer/ProjectSelect";
+import { Badge } from "@/components/ui/badge";
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: "not_started", label: "Not started" },
   { value: "in_progress", label: "In progress" },
+  { value: "paused", label: "Paused" },
   { value: "in_review", label: "In review" },
   { value: "completed", label: "Completed" },
 ];
@@ -42,7 +45,10 @@ export default function Tasks() {
   const [editingDurationValue, setEditingDurationValue] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskProjectId, setNewTaskProjectId] = useState<string | null>(null);
+  const [newTaskWorkDates, setNewTaskWorkDates] = useState<string[]>(() => [formatDateKey(new Date())]);
+  const [newTaskWorkDateInput, setNewTaskWorkDateInput] = useState("");
 
   const groups = useMemo(() => {
     const byProject = new Map<
@@ -163,13 +169,36 @@ export default function Tasks() {
 
   const handleCreateTask = useCallback(async () => {
     if (!newTaskName.trim() || !newTaskProjectId) return;
-    await tasksClient.create({ name: newTaskName.trim(), project_id: newTaskProjectId });
+    await tasksClient.create({
+      name: newTaskName.trim(),
+      project_id: newTaskProjectId,
+      description: newTaskDescription.trim() || undefined,
+      work_dates: newTaskWorkDates.length ? newTaskWorkDates : [formatDateKey(new Date())],
+    });
     setNewTaskName("");
+    setNewTaskDescription("");
     setNewTaskProjectId(null);
+    setNewTaskWorkDates([formatDateKey(new Date())]);
     setCreateOpen(false);
     invalidate();
     refetch();
-  }, [newTaskName, newTaskProjectId, invalidate, refetch]);
+  }, [newTaskName, newTaskDescription, newTaskProjectId, newTaskWorkDates, invalidate, refetch]);
+
+  const openCreateDialog = useCallback(() => {
+    setNewTaskWorkDates([formatDateKey(new Date())]);
+    setCreateOpen(true);
+  }, []);
+
+  const addWorkDate = useCallback(() => {
+    const d = newTaskWorkDateInput.trim().slice(0, 10);
+    if (!d || newTaskWorkDates.includes(d)) return;
+    setNewTaskWorkDates((prev) => [...prev, d].sort());
+    setNewTaskWorkDateInput("");
+  }, [newTaskWorkDateInput, newTaskWorkDates]);
+
+  const removeWorkDate = useCallback((dateKey: string) => {
+    setNewTaskWorkDates((prev) => prev.filter((d) => d !== dateKey));
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -189,7 +218,7 @@ export default function Tasks() {
           <Button variant="outline" size="icon" onClick={() => setSelectedDate(nextDay(selectedDate))} disabled={!canGoNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+          <Button onClick={openCreateDialog} className="gap-2">
             <Plus className="h-4 w-4" />
             New task
           </Button>
@@ -248,6 +277,46 @@ export default function Tasks() {
                 onChange={(e) => setNewTaskName(e.target.value)}
                 placeholder="Task name"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Textarea
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
+                placeholder="Task description"
+                rows={2}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Expected / work dates</Label>
+              <p className="text-xs text-muted-foreground">Default is today. Add or remove dates as needed.</p>
+              <div className="flex flex-wrap gap-2">
+                {newTaskWorkDates.map((d) => (
+                  <Badge key={d} variant="secondary" className="gap-1">
+                    {d}
+                    <button
+                      type="button"
+                      onClick={() => removeWorkDate(d)}
+                      className="ml-1 rounded-full hover:bg-muted-foreground/20"
+                      aria-label={`Remove ${d}`}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={newTaskWorkDateInput}
+                  onChange={(e) => setNewTaskWorkDateInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addWorkDate())}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addWorkDate}>
+                  Add date
+                </Button>
+              </div>
             </div>
           </div>
           <DialogFooter>

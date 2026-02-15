@@ -5,7 +5,7 @@ This file logs all prompts sent to AI tools during development, along with their
 ## Log Format
 
 ```
-### [YYYY-MM-DD HH:MM:SS] [AI Tool]
+### [YYYY-MM-DD HH:MM:SS (all times are in UTC)] [AI Tool]
 
 **Prompt:**
 [Exact prompt text]
@@ -63,6 +63,14 @@ In the process I need to maintain README.md where the information about technolo
 
 **Changes/Outcome:**
 Initialized project structure with Next.js, TypeScript, Tailwind CSS, and Supabase. Created core components including Layout, Header, Sidebar, TaskList, TaskCard, and TimerBar. Set up state management with custom hooks and utility functions for date handling and formatting.
+
+### [2025-02-15 12:30:36] [Lovable]
+
+**Prompt:**
+I have added some project structure from old repo. Check it out and make into a working app suited for Lovable while also making better design choice, include proper sidebar for navigation, header and other design components.
+
+**Changes/Outcome:**
+Cleaned up all Next.js artifacts and rebuilt the app as a proper Vite/React application with a shadcn sidebar, header with page titles, and 5 pages (Dashboard, Tasks, Projects, Reports, Settings) — all using semantic design tokens.
 
 ### [2025-02-15 12:30:36] [Cursor]
 
@@ -868,3 +876,11 @@ Date Picker on the tasks page works in a weird way. When I open it it shows toda
 **Changes/Outcome:**
 ...
 
+### [2025-02-15 ..:..:..] [Cursor]
+
+**Prompt:**
+For tasks creation we need to update to include description field writing to supabase, add and run a new migration to set dates the task is expected to be done (on create button we need to automatically set it to today first of all, but support choosing other days and not choosing today if it is needed, plus starting a timer for some task through Dashboard automatically should add the current date to the dates column if it is not there yet) and status column: not started, in progress (if timer on that task is now running we need a proper icon to display it too), paused (if it has a history of execution, but the timer is not running now), in review, completed.
+On Reports page we also need to set default chosen as Today.
+
+**Changes/Outcome:**
+...

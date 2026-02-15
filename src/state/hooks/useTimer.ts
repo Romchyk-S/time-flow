@@ -4,6 +4,7 @@ import { timerService } from "../services/timerService";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
 import { tasksClient } from "@/api/clients/tasksClient";
 import { projectsClient } from "@/api/clients/projectsClient";
+import { formatDateKey } from "../utils/dateUtils";
 import type { Project, Task } from "@/types";
 
 export function useTimer() {
@@ -60,6 +61,8 @@ export function useTimer() {
       if (!task) {
         task = await tasksClient.create({ name, project_id: project.id });
       }
+      const todayKey = formatDateKey(new Date());
+      await tasksClient.addWorkDateIfNeeded(task.id, todayKey);
       const entry = await timeEntriesClient.start(task.id);
       useTimerStore.getState().setRunning({
         entryId: entry.id,

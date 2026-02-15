@@ -1,7 +1,8 @@
 import { formatDurationLong } from "@/state/utils/timeUtils";
-import { formatDuration, secondsToDurationInput, parseDurationToSeconds } from "@/state/utils/timeUtils";
+import { formatDuration } from "@/state/utils/timeUtils";
 import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
+import { CircleDot, Pause } from "lucide-react";
 
 export interface EntryRow {
   id: string;
@@ -141,11 +142,16 @@ function EntryRowInline({
       ? `${new Date(row.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${new Date(row.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
       : "Running...";
 
+  const statusIcon =
+    row.status === "in_progress" && isRunning ? (
+      <CircleDot className="h-4 w-4 text-green-500 shrink-0 animate-pulse" title="Timer running" />
+    ) : row.status === "paused" ? (
+      <Pause className="h-4 w-4 text-muted-foreground shrink-0" title="Paused" />
+    ) : null;
+
   return (
     <div className="flex items-center gap-4 px-4 py-2 text-sm">
-      {isRunning && (
-        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" title="Timer running" />
-      )}
+      {statusIcon ?? (isRunning ? <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" title="Timer running" /> : null)}
       <div className="min-w-[140px] flex-1">
         <input
           type="text"
@@ -192,15 +198,18 @@ function EntryRowInline({
         )}
       </div>
       <span className="text-muted-foreground text-xs w-24 shrink-0">{timeRange}</span>
-      <select
-        className="min-w-[110px] rounded border bg-background px-2 py-1 text-xs capitalize"
-        value={row.status}
-        onChange={(e) => onEditStatus(row.taskId, e.target.value)}
-      >
-        {statusOptions.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <span className="flex items-center gap-1.5 min-w-[120px]">
+        {statusIcon}
+        <select
+          className="flex-1 min-w-0 rounded border bg-background px-2 py-1 text-xs capitalize"
+          value={row.status}
+          onChange={(e) => onEditStatus(row.taskId, e.target.value)}
+        >
+          {statusOptions.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </span>
       <button
         type="button"
         onClick={() => onDeleteTask(row.taskId)}

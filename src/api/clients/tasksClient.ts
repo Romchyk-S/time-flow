@@ -52,14 +52,38 @@ export const tasksClient = {
     return (data ?? []) as Task[];
   },
 
-  async create(input: { name: string; project_id: string; description?: string }): Promise<Task> {
+  async create(input: {
+    name: string;
+    project_id: string;
+    description?: string;
+    work_dates?: string[];
+  }): Promise<Task> {
     const { data, error } = await supabase
       .from("tasks")
       .insert({
         name: input.name.trim(),
         project_id: input.project_id,
         description: input.description ?? null,
+        work_dates: (input.work_dates ?? []).map((d) => d), // Supabase accepts YYYY-MM-DD strings for date[]
       })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Task;
+  },
+
+  /** Add today to task's work_dates if not already present (call when starting timer). */
+  async addWorkDateIfNeeded(taskId: string, dateKey: string): Promise<Task | null> {
+    const task = await this.getById(taskId);
+    if (!task) return null;
+    const raw = task.work_dates ?? [];
+    const dates = raw.map((d) => (typeof d === "string" ? d.slice(0, 10) : String(d).slice(0, 10)));
+    if (dates.includes(dateKey)) return task;
+    const next = [...dates, dateKey].sort();
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ work_dates: next })
+      .eq("id", taskId)
       .select()
       .single();
     if (error) throw error;
@@ -68,7 +92,7 @@ export const tasksClient = {
 
   async update(
     id: string,
-    updates: Partial<Pick<Task, "name" | "description" | "project_id" | "status" | "is_active">>
+    updates: Partial<Pick<Task, "name" | "description" | "project_id" | "status" | "is_active" | "work_dates">>
   ): Promise<Task> {
     const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
     if (error) throw error;
