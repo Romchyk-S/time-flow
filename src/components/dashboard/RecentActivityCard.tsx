@@ -13,6 +13,19 @@ interface RecentActivityCardProps {
 }
 
 export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: RecentActivityCardProps) {
+  // Log when the component renders with task details
+  console.log(`[RecentActivityCard] Rendering task: ${task.name} (ID: ${task.id})`, {
+    status: task.status,
+    lastUsed: task.last_used,
+    project: task.project?.name
+  });
+
+  // Log when the task is being started
+  const handleStartTask = () => {
+    console.log(`[RecentActivityCard] Starting task: ${task.name} (ID: ${task.id})`);
+    onStatusUpdate?.();
+    onTaskUpdated?.();
+  };
 
   const statusColors = {
     not_started: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
@@ -75,10 +88,7 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
                 project_id: task.project_id,
                 project: task.project
               }}
-              onTaskUpdate={() => {
-                onStatusUpdate?.();
-                onTaskUpdated?.();
-              }}
+              onTaskUpdate={handleStartTask}
               variant="ghost"
               size="sm"
               className="h-8"
