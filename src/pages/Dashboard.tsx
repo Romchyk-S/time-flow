@@ -171,21 +171,31 @@ const Dashboard = () => {
                   </Button>
                 </div>
               ) : (
-                <StartTaskButton
-                  task={{
-                    name: taskNameInput.trim(),
-                    project_id: selectedProject?.id || '',
-                    project: selectedProject,
-                    status: 'not_started',
-                    work_dates: []
-                  }}
-                  onTaskUpdate={handleTaskUpdated}
-                  variant="default"
-                  size="sm"
-                  className={!selectedProject || !taskNameInput.trim() ? 'opacity-50 cursor-not-allowed' : ''}
-                >
-                  Start
-                </StartTaskButton>
+                <div className={!selectedProject || !taskNameInput.trim() ? 'opacity-50' : ''}>
+                  <StartTaskButton
+                    task={{
+                      id: '', // Will be created
+                      name: taskNameInput.trim(),
+                      project_id: selectedProject?.id || '',
+                      project: selectedProject ? {
+                        ...selectedProject,
+                        // Ensure all required fields are present
+                        description: selectedProject.description || '',
+                        created_at: selectedProject.created_at || new Date().toISOString(),
+                        updated_at: selectedProject.updated_at || new Date().toISOString()
+                      } : undefined,
+                      status: 'not_started',
+                      work_dates: [],
+                      last_used: null
+                    }}
+                    onTaskUpdate={handleTaskUpdated}
+                    variant="default"
+                    size="sm"
+                    className="min-w-[80px]"
+                  >
+                    Start
+                  </StartTaskButton>
+                </div>
               )}
             </div>
           </div>
