@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDateKey } from "../utils/dateUtils";
-import type { Task } from "@/types";
+import type { Task, Project, TaskWithProject } from "@/types";
 
 export function useTasksForDate(date: Date) {
   const dateKey = formatDateKey(date);
   
-  return useQuery<Task[]>({
+  return useQuery<TaskWithProject[]>({
     queryKey: ["tasks-for-date", dateKey],
     queryFn: async () => {
       // Get all tasks that have the specified date in their work_dates array
@@ -23,11 +23,14 @@ export function useTasksForDate(date: Date) {
             updated_at
           )
         `)
-        .contains("work_dates", [dateKey])
+        .contains("work_dates", dateKey)  // Changed from [dateKey] to dateKey
         .order("name");
         
-      if (error) throw error;
-      return (data ?? []) as Task[];
+      if (error) {
+        console.error('Error fetching tasks for date:', error);
+        throw error;
+      }
+      return (data ?? []) as TaskWithProject[];
     },
   });
 }

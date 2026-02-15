@@ -1,7 +1,8 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListTodo, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import type { Project } from "@/types";
 import { useTimeEntriesForDay } from "@/state/hooks/useTimeEntries";
 import { useTasksForDate } from "@/state/hooks/useTasksForDate";
 import { useProjects } from "@/state/hooks/useProjects";
@@ -38,8 +39,15 @@ export default function Tasks() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const dayStartStr = dayStart(selectedDate);
   const { entries, refetch } = useTimeEntriesForDay(selectedDate);
-  const { data: tasksForDate = [] } = useTasksForDate(selectedDate);
+  const { data: tasksForDate = [], isLoading: isLoadingTasks } = useTasksForDate(selectedDate);
   const { projects } = useProjects();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Entries:', entries);
+    console.log('Tasks for date:', tasksForDate);
+    console.log('Projects:', projects);
+  }, [entries, tasksForDate, projects]);
   const { taskId: runningTaskId } = useTimer();
   const invalidate = useInvalidateTimeEntries();
 
@@ -68,7 +76,14 @@ export default function Tasks() {
     const byProject = new Map<
       string,
       { 
-        project: { id: string; name: string; color: string }; 
+        project: {
+          id: string;
+          name: string;
+          description: string;
+          color: string;
+          created_at: string;
+          updated_at: string;
+        };
         taskIds: Set<string>; 
         totalSeconds: number; 
         entries: EntryRow[] 
@@ -77,25 +92,36 @@ export default function Tasks() {
 
     // Process tasks for the selected date
     for (const task of tasksForDate) {
-      const projectData = task.project || { 
-        id: task.project_id, 
-        name: "", 
-        color: "#888",
+      // Find the project for this task
+      const project: Project = projects.find(p => p.id === task.project_id) || {
+        id: task.project_id,
+        name: "Unknown Project",
         description: "",
-        created_at: "",
-        updated_at: ""
+        color: "#888",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
       
-      if (!byProject.has(projectData.id)) {
-        byProject.set(projectData.id, {
-          project: projectData,
+      // Ensure all required fields are present
+      const projectWithDefaults: Project = {
+        id: project.id,
+        name: project.name || "Unknown Project",
+        description: project.description || "",
+        color: project.color || "#888",
+        created_at: project.created_at || new Date().toISOString(),
+        updated_at: project.updated_at || new Date().toISOString()
+      };
+      
+      if (!byProject.has(projectWithDefaults.id)) {
+        byProject.set(projectWithDefaults.id, {
+          project: projectWithDefaults,
           taskIds: new Set(),
           totalSeconds: 0,
           entries: [],
         });
       }
       
-      const g = byProject.get(projectData.id)!;
+      const g = byProject.get(projectWithDefaults.id)!;
       const timeEntry = taskTimeEntries.get(task.id);
       
       g.taskIds.add(task.id);
@@ -106,9 +132,9 @@ export default function Tasks() {
         id: timeEntry?.id ?? `task-${task.id}`,
         taskId: task.id,
         taskName: task.name,
-        projectId: projectData.id,
-        projectName: projectData.name,
-        projectColor: projectData.color,
+        projectId: project.id,
+        projectName: project.name,
+        projectColor: project.color,
         status: task.status ?? "not_started",
         duration: duration,
         startTime: timeEntry?.start_time ?? null,
@@ -122,7 +148,24 @@ export default function Tasks() {
       if (!entry.task_id || !entry.task) continue;
       
       const task = entry.task;
-      const proj = task.project ?? { id: task.project_id, name: "", color: "#888" };
+      const projectFromTask = task.project;
+      const proj: Project = projectFromTask 
+        ? {
+            id: projectFromTask.id,
+            name: projectFromTask.name || "Unknown Project",
+            description: projectFromTask.description || "",
+            color: projectFromTask.color || "#888",
+            created_at: projectFromTask.created_at || new Date().toISOString(),
+            updated_at: projectFromTask.updated_at || new Date().toISOString()
+          }
+        : {
+            id: task.project_id,
+            name: "Unknown Project",
+            description: "",
+            color: "#888",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
       
       // Skip if we've already processed this task from tasksForDate
       const taskAlreadyProcessed = tasksForDate.some(t => t.id === task.id);
@@ -300,7 +343,9 @@ export default function Tasks() {
 
       <Card>
         <CardContent className="py-6">
-          {groups.length === 0 ? (
+          {isLoadingTasks ? (
+        <div className="text-center py-12">Loading tasks...</div>
+      ) : groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ListTodo className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No tasks for this day</h3>
