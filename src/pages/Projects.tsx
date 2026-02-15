@@ -1,7 +1,14 @@
 import { useState, useCallback, Component, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { projectsClient as projectsApiClient } from "@/api/clients/projectsClient";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { FolderKanban, Plus } from "lucide-react";
+import { useProjects, useInvalidateProjects } from "@/state/hooks/useProjects";
+import { projectsClient } from "@/api/clients/projectsClient";
+import ProjectCard from "@/components/projects/ProjectCard";
+import { ProjectForm } from "@/components/projects/ProjectForm";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { Project } from "@/types";
 
 class ErrorBoundary extends Component<{ fallback: React.ReactNode; children: React.ReactNode }> {
   state = { hasError: false };
@@ -21,40 +28,19 @@ class ErrorBoundary extends Component<{ fallback: React.ReactNode; children: Rea
     return this.props.children;
   }
 }
-import { Button } from "@/components/ui/button";
-import { FolderKanban, Plus } from "lucide-react";
-import { useProjects } from "@/state/hooks/useProjects";
-import { useInvalidateProjects } from "@/state/hooks/useProjects";
-import { projectsClient } from "@/api/clients/projectsClient";
-import ProjectCard from "@/components/projects/ProjectCard";
-import { ProjectForm } from "@/components/projects/ProjectForm";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import type { Project } from "@/types";
 
 function ProjectsContent() {
   // Debug mount/remount
   console.log('ProjectsContent rendering');
   
-  // All hooks must be called unconditionally at the top level
+  // Use the custom hook for projects data
   const { 
-    data: projects, 
+    projects = [], 
     error, 
     isLoading, 
     isError, 
     isSuccess 
-  } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectsApiClient.getAll(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1,
-    refetchOnWindowFocus: false,
-  });
+  } = useProjects();
 
   // Log data changes
   useEffect(() => {
@@ -65,8 +51,8 @@ function ProjectsContent() {
     }
   }, [projects, isSuccess, isError, error]);
 
-  // Initialize projects as empty array if undefined
-  const projectList = projects || [];
+  // Use projects directly since useProjects already provides a default empty array
+  const projectList = projects;
   
   const invalidate = useInvalidateProjects();
   const [dialogOpen, setDialogOpen] = useState(false);

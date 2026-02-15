@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
+import React from "react";
 import { ChevronDown, ChevronRight, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/state/hooks/useTasks";
@@ -22,18 +23,18 @@ interface ProjectTaskListProps {
   onTaskUpdate?: () => void;
 }
 
-export function ProjectTaskList({ projectId, onTaskUpdate }: ProjectTaskListProps) {
+const ProjectTaskListComponent = React.forwardRef<HTMLDivElement, ProjectTaskListProps>(({ projectId, onTaskUpdate }, ref) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Partial<Task> | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const { tasks, isLoading, refetch } = useTasks(projectId);
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data } = await projectsClient.getAll();
-      return data || [];
+      const result = await projectsClient.getAll();
+      return result || [];
     }
   }) as { data: Project[] };
 
@@ -181,4 +182,8 @@ export function ProjectTaskList({ projectId, onTaskUpdate }: ProjectTaskListProp
       />
     </div>
   );
-}
+});
+
+ProjectTaskListComponent.displayName = 'ProjectTaskList';
+
+export { ProjectTaskListComponent as ProjectTaskList };
