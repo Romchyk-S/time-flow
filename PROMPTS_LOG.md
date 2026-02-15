@@ -850,7 +850,49 @@ Scalability: Easy to add new features in the right layer
 This architecture ensures clean, maintainable, and professional code structure that the evaluators are looking for!
 
 **Changes/Outcome:**
-...
+Summary of what’s in place:
+1. Database (Supabase)
+Migration applied: projects, tasks (with status: not_started, in_progress, in_review, completed), time_entries.
+Indexes, updated_at triggers, and time_flow_update_task_usage trigger on time_entries are in place.
+RLS policies allow all for now (you can restrict later by user).
+2. Time tracking
+Dashboard
+Start/Stop with elapsed time (updates every second).
+Task name field with autocomplete from existing tasks for the selected project (by usage/last used).
+Project dropdown; task input and suggestions depend on selected project.
+Floating timer (FloatingTimer) in the top-right on every page when a timer is running (with Open link to Dashboard).
+3. Tasks
+Tasks page
+Day navigation: arrows for previous/next workday within the week; selected day (and “Today”) shown.
+List: all time entries for the selected day, grouped by project with project color, task count, and total time per group.
+Row actions: edit task name, change project (dropdown), edit duration (inline H:MM), set status (not started, in progress, in review, completed).
+Running indicator: green pulsing dot when that task’s timer is running.
+Create (new task) and Delete (task + its entries) with confirmation.
+4. Projects
+Projects page
+List of projects with color strip and name.
+Add / Edit (name + color).
+Color picker: pastel palette in colorUtils.ts; new projects get a color distinct from existing ones (simple distance check).
+Delete with confirmation (cascade to tasks and time entries).
+5. Reports
+Period
+Presets: Today, This week, Last week, Last month.
+Custom range via calendar (range picker).
+Summary
+Total time, number of projects, number of tasks, average daily time.
+Tables
+Time by project: project name, total time, % of total, task count.
+Detailed tasks: date, project, task name, duration, time range, completed in range (yes/no).
+Daily summary: date, total time, project count, task count.
+CSV export
+Full report: one CSV with section headers (Summary first, then Time by project, Detailed tasks, Daily summary).
+Section exports: Summary only, By project, Detailed tasks, Daily summary (each as its own CSV).
+6. Architecture
+UI: components/timer/, components/entries/, components/projects/, components/reports/, shared UI.
+State: state/store/timerStore.ts, state/hooks/useTimer.ts, useAutocomplete, useTimeEntries, useProjects, useReports, state/services/timerService.ts, exportService.ts, state/utils/timeUtils.ts, dateUtils.ts, colorUtils.ts.
+API: api/clients/projectsClient.ts, tasksClient.ts, timeEntriesClient.ts (Supabase).
+Types: src/types/index.ts aligned with your schema (Project, Task, TimeEntry, ReportSummary, etc.).
+Flow matches your spec: project → task (by name + project, auto-created if new) → time_entry; task usage is updated by the DB trigger. The app is ready to run; use Projects first to create at least one project, then start the timer from the Dashboard. If you want, we can add multi-sheet Excel export (e.g. with xlsx) or tweak any of the behaviors above.
 
 ### [2025-02-15 ..:..:..] [Cursor]
 
@@ -858,15 +900,32 @@ This architecture ensures clean, maintainable, and professional code structure t
 Check for errors on project page, it is not loading.
 
 **Changes/Outcome:**
-...
-
+The Projects page was using Button in two places (the “Add project” header button and the empty-state “Add project” button) but Button was never imported, so the component threw at render and the page didn’t load.
+I’ve added:
+import { Button } from "@/components/ui/button";
+to src/pages/Projects.tsx. The Projects page should load correctly now. Refresh and try opening it again.
 ### [2025-02-15 ..:..:..] [Cursor]
 
 **Prompt:**
 In Settings add theme toggle.
 
 **Changes/Outcome:**
-...
+Summary of changes:
+1. Theme provider in src/main.tsx
+Wrapped the app in ThemeProvider from next-themes with:
+attribute="class" so Tailwind’s .dark class is toggled on the root
+defaultTheme="system" so it follows the OS preference by default
+enableSystem so the “System” option is supported
+2. Theme toggle in src/pages/Settings.tsx
+New Appearance card with a Theme control.
+Three options:
+Light – light mode
+Dark – dark mode
+System – follow OS (light/dark)
+Uses your existing RadioGroup and shows Sun / Moon / Monitor icons.
+mounted state avoids hydration issues with useTheme() (theme is only applied after mount).
+Choice is stored by next-themes (e.g. in localStorage) and persists across reloads.
+Open Settings and use the theme options to switch between light, dark, and system. The app will apply the matching styles from your index.css (e.g. :root for light and .dark for dark).
 
 ### [2025-02-15 ..:..:..] [Cursor]
 
@@ -874,13 +933,71 @@ In Settings add theme toggle.
 Date Picker on the tasks page works in a weird way. When I open it it shows today (15.02.2026), forward arrow is not enabled at all. Then I click back and it goes to 13.02.2026 and when I click forward it goes to 16.02.2026 and disables both arrows. Ensure we go through days one by one (time range has to include 2 weeks, whole current one and whole next one) and properly query supabase while doing so.
 
 **Changes/Outcome:**
-...
+Summary of changes:
+1. dateUtils.ts
+prevDay(date) – go back one calendar day (no weekend skip).
+nextDay(date) – go forward one calendar day.
+getTasksPageDateRange() – returns a 2-week window:
+rangeStart: Monday of the current week (00:00).
+rangeEnd: Sunday of the next week (23:59:59).
+So you get 14 days: full current week + full next week.
+2. Tasks.tsx
+Navigation: Uses prevDay / nextDay instead of prevWorkday / nextWorkday, so the selected date moves one calendar day at a time (including weekends).
+Range: Uses getTasksPageDateRange() so the allowed range is always “current week + next week”.
+Arrow state:
+Back: enabled when the selected date is after rangeStart (so not on the first day).
+Forward: enabled when the selected date is before rangeEnd (so not on the last day).
+Comparison uses formatDateKey so only the calendar day matters, not the time.
+3. Supabase
+No change. useTimeEntriesForDay(selectedDate) already uses dayStart(selectedDate) and dayEnd(selectedDate) in the query key and in timeEntriesClient.getEntriesForDay(dayStartStr, dayEndStr), so changing the selected day triggers a new request for that day’s entries.
+Result on the Tasks page:
+One-day steps with the arrows (e.g. 15 → 14 → 16).
+Back disabled on the first day of the range (Monday of current week).
+Forward disabled on the last day (Sunday of next week).
+Each selected day loads that day’s entries from Supabase
 
 ### [2025-02-15 ..:..:..] [Cursor]
 
 **Prompt:**
 For tasks creation we need to update to include description field writing to supabase, add and run a new migration to set dates the task is expected to be done (on create button we need to automatically set it to today first of all, but support choosing other days and not choosing today if it is needed, plus starting a timer for some task through Dashboard automatically should add the current date to the dates column if it is not there yet) and status column: not started, in progress (if timer on that task is now running we need a proper icon to display it too), paused (if it has a history of execution, but the timer is not running now), in review, completed.
 On Reports page we also need to set default chosen as Today.
+
+**Changes/Outcome:**
+Summary of changes:
+1. Migration (Supabase)
+work_dates added to tasks as date[] (default '{}'). Used for “expected / worked on” dates.
+Status constraint updated to allow paused: not_started, in_progress, paused, in_review, completed.
+2. Types
+TaskStatus includes "paused".
+Task includes work_dates: string[] | null (YYYY-MM-DD).
+3. Task creation (Tasks page)
+Description: optional Description field (textarea) saved to Supabase.
+Expected / work dates:
+Default: [today] when opening the create dialog.
+Add date: date input + “Add date” to add more (no duplicate).
+Remove date: × on each badge to remove (including today).
+Stored in work_dates on create.
+4. API – tasksClient
+create accepts description and work_dates?: string[] and writes both to Supabase.
+addWorkDateIfNeeded(taskId, dateKey): adds dateKey (e.g. today as YYYY-MM-DD) to the task’s work_dates if it’s not already there. Used when starting a timer.
+update can update work_dates.
+addWorkDateIfNeeded normalizes existing work_dates to YYYY-MM-DD when reading.
+5. Timer (Dashboard)
+useTimer.startTimer: after resolving or creating the task, calls tasksClient.addWorkDateIfNeeded(task.id, formatDateKey(new Date())) so the current date is in work_dates when you start the timer.
+6. Status and icons
+Status options include Paused (between In progress and In review).
+Entry list (Tasks page):
+In progress + timer running: CircleDot icon (green, pulsing) as “timer running”.
+Paused: Pause icon (muted).
+Other statuses: no status icon; if the row is running, the small green dot still shows when isRunning is true.
+7. Reports page
+Default period set to Today (preset and initial range use getPresetRange("today")).
+
+
+### [2025-02-15 ..:..:..] [Cursor]
+
+**Prompt:**
+On Projects page under each project name I would like to have an arrow button to open and close a list of tasks. It needs to show: Task Name, status, last date worked on, total duration of execution (for the last one I think we need a new column in database, so create a migration and I will run it, while you connect the logic properly, so when the is stopped we add the execution time).
 
 **Changes/Outcome:**
 ...
