@@ -4,8 +4,7 @@ import { ChevronDown, ChevronRight, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/state/hooks/useTasks";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/state/utils/timeUtils";
-import { parseIsoDuration } from "@/lib/time-utils";
+// Duration formatting utilities removed as we're now using simple minutes
 import { getStatusColors } from "@/lib/colorUtils";
 import { Task, TaskStatus, Project } from "@/types";
 import { tasksClient } from "@/api/clients/tasksClient";
@@ -128,28 +127,16 @@ const ProjectTaskListComponent = React.forwardRef<HTMLDivElement, ProjectTaskLis
           </div>
           <div className="col-span-2 text-right text-muted-foreground">
             {(() => {
-              console.log(`[ProjectTaskList] Task ${task.id} execution_duration:`, task.execution_duration);
-              
-              if (!task.execution_duration) return '0m';
-              
               try {
-                // If it's a string, parse it as ISO duration
-                if (typeof task.execution_duration === 'string') {
-                  const seconds = parseIsoDuration(task.execution_duration);
-                  console.log(`[ProjectTaskList] Parsed ISO duration: ${seconds}s`);
-                  return formatDuration(seconds * 1000);
-                }
+                // total_duration is stored in minutes
+                const minutes = task.total_duration || 0;
+                const hours = Math.floor(minutes / 60);
+                const remainingMinutes = minutes % 60;
                 
-                // If it's a number, assume it's in minutes
-                if (typeof task.execution_duration === 'number') {
-                  const minutes = Math.floor(task.execution_duration);
-                  const seconds = Math.round((task.execution_duration - minutes) * 60);
-                  const totalSeconds = (minutes * 60) + seconds;
-                  console.log(`[ProjectTaskList] Converted ${task.execution_duration} minutes to ${totalSeconds}s`);
-                  return formatDuration(totalSeconds * 1000);
+                if (hours > 0) {
+                  return `${hours}h ${remainingMinutes}m`;
                 }
-                
-                return '0m';
+                return `${minutes}m`;
               } catch (error) {
                 console.error(`[ProjectTaskList] Error formatting duration for task ${task.id}:`, error);
                 return '0m';

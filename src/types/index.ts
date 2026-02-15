@@ -22,7 +22,7 @@ export interface Task {
   usage_count: number;
   last_used: string | null;
   work_dates: string[] | null;
-  execution_duration: string | null; // Stored as an ISO 8601 duration string (e.g., 'PT1H30M' for 1 hour and 30 minutes)
+  total_duration: number; // Total duration in minutes
   created_at: string;
   updated_at: string;
 }

@@ -8,7 +8,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   duration_minutes integer;
-  current_duration interval;
+  current_duration integer;
   updated_task tasks%ROWTYPE;
 BEGIN
   -- Convert seconds to minutes, rounding up to ensure we don't lose time
@@ -21,22 +21,21 @@ BEGIN
     duration_seconds;
     
   -- Get current duration for logging
-  SELECT execution_duration INTO current_duration 
+  SELECT total_duration INTO current_duration 
   FROM public.tasks 
   WHERE id = task_id;
   
-  RAISE NOTICE 'Current duration before update: %', current_duration;
+  RAISE NOTICE 'Current duration before update: % minutes', current_duration;
   
   -- Update with minutes
   UPDATE public.tasks
   SET 
-    execution_duration = COALESCE(execution_duration, '0 minutes'::interval) + 
-                        (duration_minutes * interval '1 minute'),
+    total_duration = COALESCE(total_duration, 0) + duration_minutes,
     last_used = NOW()
   WHERE id = task_id
   RETURNING * INTO updated_task;
   
-  RAISE NOTICE 'Updated duration: %', updated_task.execution_duration;
+  RAISE NOTICE 'Updated duration: % minutes', updated_task.total_duration;
   
   RETURN NEXT updated_task;
   RETURN;
