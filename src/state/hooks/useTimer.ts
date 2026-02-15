@@ -82,15 +82,8 @@ export function useTimer() {
     setError(null);
     const duration = timerService.calculateDuration(startTime);
     await timeEntriesClient.stop(entryId, duration);
-    try {
-      if (store.taskId) {
-        await tasksClient.incrementTotalDuration(store.taskId, duration);
-      }
-    } catch (e) {
-      console.error("Failed to increment task total duration", e);
-    }
     useTimerStore.getState().clearRunning();
-  }, [entryId, startTime, store.taskId]);
+  }, [entryId, startTime]);
 
   return {
     isRunning,

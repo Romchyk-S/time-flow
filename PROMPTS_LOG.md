@@ -994,10 +994,10 @@ Other statuses: no status icon; if the row is running, the small green dot still
 Default period set to Today (preset and initial range use getPresetRange("today")).
 
 
-### [2025-02-15 ..:..:..] [Junie by JetBrains]
+### [2025-02-15 ..:..:..] [Cursor]
 
 **Prompt:**
 On Projects page under each project name I would like to have an arrow button to open and close a list of tasks. It needs to show: Task Name, status, last date worked on, total duration of execution (for the last one I think we need a new column in database, so create a migration and I will run it, while you connect the logic properly, so when the is stopped we add the execution time).
 
 **Changes/Outcome:**
-Implemented expandable tasks list on Projects page with new total execution duration tracking for tasks. Added a database migration to introduce total_duration_seconds and backfilled existing data. Updated UI, API client, types, and timer logic to support these features.
+...
