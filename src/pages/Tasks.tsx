@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListTodo, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useTimeEntriesForDay } from "@/state/hooks/useTimeEntries";
+import { useTasksForDate } from "@/state/hooks/useTasksForDate";
 import { useProjects } from "@/state/hooks/useProjects";
 import { useTimer } from "@/state/hooks/useTimer";
 import { useInvalidateTimeEntries } from "@/state/hooks/useTimeEntries";
@@ -37,6 +38,7 @@ export default function Tasks() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const dayStartStr = dayStart(selectedDate);
   const { entries, refetch } = useTimeEntriesForDay(selectedDate);
+  const { data: tasksForDate = [] } = useTasksForDate(selectedDate);
   const { projects } = useProjects();
   const { taskId: runningTaskId } = useTimer();
   const invalidate = useInvalidateTimeEntries();
@@ -50,16 +52,82 @@ export default function Tasks() {
   const [newTaskWorkDates, setNewTaskWorkDates] = useState<string[]>(() => [formatDateKey(new Date())]);
   const [newTaskWorkDateInput, setNewTaskWorkDateInput] = useState("");
 
+  // Create a map of task IDs to their time entries for quick lookup
+  const taskTimeEntries = useMemo(() => {
+    const map = new Map<string, typeof entries[number]>();
+    for (const entry of entries) {
+      if (entry.task_id) {
+        map.set(entry.task_id, entry);
+      }
+    }
+    return map;
+  }, [entries]);
+
+  // Group tasks by project and include time entry data if it exists
   const groups = useMemo(() => {
     const byProject = new Map<
       string,
-      { project: { id: string; name: string; color: string }; taskIds: Set<string>; totalSeconds: number; entries: EntryRow[] }
+      { 
+        project: { id: string; name: string; color: string }; 
+        taskIds: Set<string>; 
+        totalSeconds: number; 
+        entries: EntryRow[] 
+      }
     >();
-    type E = (typeof entries)[number];
-    for (const e of entries as E[]) {
-      const task = (e as E & { task?: { id: string; name: string; project_id: string; status: string; project?: { id: string; name: string; color: string } } }).task;
-      if (!task) continue;
+
+    // Process tasks for the selected date
+    for (const task of tasksForDate) {
+      const projectData = task.project || { 
+        id: task.project_id, 
+        name: "", 
+        color: "#888",
+        description: "",
+        created_at: "",
+        updated_at: ""
+      };
+      
+      if (!byProject.has(projectData.id)) {
+        byProject.set(projectData.id, {
+          project: projectData,
+          taskIds: new Set(),
+          totalSeconds: 0,
+          entries: [],
+        });
+      }
+      
+      const g = byProject.get(projectData.id)!;
+      const timeEntry = taskTimeEntries.get(task.id);
+      
+      g.taskIds.add(task.id);
+      const duration = timeEntry?.duration ?? 0;
+      g.totalSeconds += duration;
+      
+      g.entries.push({
+        id: timeEntry?.id ?? `task-${task.id}`,
+        taskId: task.id,
+        taskName: task.name,
+        projectId: projectData.id,
+        projectName: projectData.name,
+        projectColor: projectData.color,
+        status: task.status ?? "not_started",
+        duration: duration,
+        startTime: timeEntry?.start_time ?? null,
+        endTime: timeEntry?.end_time ?? null,
+        isRunning: runningTaskId === task.id,
+      });
+    }
+
+    // Also include any time entries that don't have corresponding tasks in tasksForDate
+    for (const entry of entries) {
+      if (!entry.task_id || !entry.task) continue;
+      
+      const task = entry.task;
       const proj = task.project ?? { id: task.project_id, name: "", color: "#888" };
+      
+      // Skip if we've already processed this task from tasksForDate
+      const taskAlreadyProcessed = tasksForDate.some(t => t.id === task.id);
+      if (taskAlreadyProcessed) continue;
+      
       if (!byProject.has(proj.id)) {
         byProject.set(proj.id, {
           project: proj,
@@ -68,30 +136,35 @@ export default function Tasks() {
           entries: [],
         });
       }
+      
       const g = byProject.get(proj.id)!;
-      g.taskIds.add(task.id);
-      g.totalSeconds += e.duration ?? 0;
-      g.entries.push({
-        id: e.id,
-        taskId: task.id,
-        taskName: task.name,
-        projectId: proj.id,
-        projectName: proj.name,
-        projectColor: proj.color,
-        status: task.status ?? "not_started",
-        duration: e.duration ?? 0,
-        startTime: e.start_time,
-        endTime: e.end_time,
-        isRunning: runningTaskId === task.id,
-      });
+      if (!g.taskIds.has(task.id)) {
+        g.taskIds.add(task.id);
+        g.totalSeconds += entry.duration ?? 0;
+        
+        g.entries.push({
+          id: entry.id,
+          taskId: task.id,
+          taskName: task.name,
+          projectId: proj.id,
+          projectName: proj.name,
+          projectColor: proj.color,
+          status: task.status ?? "not_started",
+          duration: entry.duration ?? 0,
+          startTime: entry.start_time,
+          endTime: entry.end_time,
+          isRunning: runningTaskId === task.id,
+        });
+      }
     }
+
     return Array.from(byProject.values()).map((g) => ({
       project: g.project,
       taskCount: g.taskIds.size,
       totalSeconds: g.totalSeconds,
       entries: g.entries,
     }));
-  }, [entries, runningTaskId]);
+  }, [entries, runningTaskId, tasksForDate, taskTimeEntries]);
 
   const { rangeStart, rangeEnd } = useMemo(getTasksPageDateRange, []);
 

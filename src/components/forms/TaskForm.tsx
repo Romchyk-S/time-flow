@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod/dist/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,10 +32,7 @@ const taskFormSchema = z.object({
   status: z.enum(["not_started", "in_progress", "paused", "in_review", "completed"]),
   project_id: z.string().min(1, "Project is required"),
   work_dates: z.array(z.string()).optional().nullable(),
-  dateRange: z.object({
-    from: z.date(),
-    to: z.date().optional(),
-  }).optional().nullable(),
+  selectedDates: z.array(z.date()).optional().default([]),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -57,42 +54,57 @@ export function TaskForm({
 }: TaskFormProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      description: initialData?.description || "",
-      status: initialData?.status || "not_started",
-      project_id: initialData?.project_id || "",
-      work_dates: initialData?.work_dates || null,
-      dateRange: initialData?.dateRange || null,
+    defaultValues: initialData?.work_dates?.length ? {
+      ...initialData,
+      selectedDates: initialData.work_dates.map(date => new Date(date)),
+    } : {
+      name: "",
+      description: "",
+      status: "not_started",
+      project_id: "",
+      work_dates: [],
+      selectedDates: [new Date()],
     },
   });
 
-  const handleDateSelect = (range: { from?: Date; to?: Date } | undefined) => {
-    if (!range?.from) return;
-    
-    const from = range.from;
-    const to = range.to || range.from;
-    
-    if (!range.to) {
-      form.setValue('work_dates', [format(from, 'yyyy-MM-dd')]);
-      form.setValue('dateRange', { from, to: from });
-      return;
-    }
+  const selectedDates = form.watch('selectedDates') || [];
 
-    const dates: string[] = [];
-    let current = new Date(from);
-    while (isBefore(current, to) || isSameDay(current, to)) {
-      dates.push(format(current, 'yyyy-MM-dd'));
-      current = new Date(current.setDate(current.getDate() + 1));
-    }
+  const handleDateSelect = (date: Date) => {
+    const currentDates = form.getValues('selectedDates') || [];
+    const dateString = date.toISOString().split('T')[0];
+    
+    const isDateSelected = currentDates.some(d => 
+      d.toISOString().split('T')[0] === dateString
+    );
 
-    form.setValue('work_dates', dates);
-    form.setValue('dateRange', { from, to });
+    if (isDateSelected) {
+      form.setValue('selectedDates', 
+        currentDates.filter(d => d.toISOString().split('T')[0] !== dateString),
+        { shouldDirty: true }
+      );
+    } else {
+      form.setValue('selectedDates', 
+        [...currentDates, date].sort((a, b) => a.getTime() - b.getTime()),
+        { shouldDirty: true }
+      );
+    }
+  };
+
+  const handleSubmit = async (values: TaskFormValues) => {
+    // Convert selected dates to work_dates format
+    if (values.selectedDates?.length) {
+      values.work_dates = values.selectedDates.map(date => 
+        date.toISOString().split('T')[0]
+      );
+    }
+    
+    delete values.selectedDates; // Remove the selectedDates field before submission
+    await onSubmit(values);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -179,55 +191,64 @@ export function TaskForm({
 
         <FormField
           control={form.control}
-          name="dateRange"
+          name="selectedDates"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Expected/Work Dates</FormLabel>
+              <FormLabel>Work Dates</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
+                        "w-[240px] pl-3 text-left font-normal",
+                        !field.value?.length && "text-muted-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value?.from ? (
-                        field.value.to ? (
-                          <>
-                            {format(field.value.from, 'MMM d, yyyy')} -{' '}
-                            {format(field.value.to, 'MMM d, yyyy')}
-                          </>
-                        ) : (
-                          format(field.value.from, 'MMM d, yyyy')
-                        )
+                      {field.value?.length ? (
+                        <span>{field.value.length} date{field.value.length > 1 ? 's' : ''} selected</span>
                       ) : (
-                        <span>Pick a date range</span>
+                        <span>Select work dates</span>
                       )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={field.value?.from}
-                    selected={field.value ? {
-                      from: field.value.from,
-                      to: field.value.to || field.value.from
-                    } : undefined}
-                    onSelect={handleDateSelect}
-                    numberOfMonths={2}
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Calendar
+                      mode="multiple"
+                      selected={field.value || []}
+                      onSelect={(dates) => {
+                        if (dates) {
+                          // Handle multiple date selection
+                          const newDates = Array.isArray(dates) ? dates : [dates];
+                          form.setValue('selectedDates', newDates, { shouldDirty: true });
+                        }
+                      }}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date("1900-01-01")
+                      }
+                      initialFocus
+                      className="rounded-md border"
+                    />
+                  </div>
                 </PopoverContent>
               </Popover>
-              {form.watch('work_dates')?.length ? (
-                <p className="text-xs text-muted-foreground">
-                  {form.watch('work_dates')?.length} day{form.watch('work_dates')?.length !== 1 ? 's' : ''} selected
-                </p>
-              ) : null}
+              {selectedDates.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedDates.map((date) => (
+                    <div 
+                      key={date.toISOString()}
+                      className="text-xs bg-muted px-2 py-1 rounded-md"
+                      onClick={() => handleDateSelect(date)}
+                    >
+                      {format(date, 'MMM dd, yyyy')}
+                      <span className="ml-2 cursor-pointer">×</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <FormMessage />
             </FormItem>
           )}
