@@ -109,12 +109,40 @@ export const tasksClient = {
   },
 
   async updateExecutionDuration(id: string, durationInSeconds: number): Promise<Task> {
-    const { data, error } = await supabase.rpc('increment_task_duration', {
-      task_id: id,
-      duration_seconds: durationInSeconds
-    });
+    console.log(`[TasksClient] Updating task ${id} duration with ${durationInSeconds} seconds`);
     
-    if (error) throw error;
-    return data as Task;
+    // Ensure we have a valid duration (at least 1 second)
+    const duration = Math.max(1, Math.floor(durationInSeconds));
+    
+    try {
+      const { data, error } = await supabase.rpc('increment_task_duration', {
+        task_id: id,
+        duration_seconds: duration
+      });
+      
+      if (error) {
+        console.error('[TasksClient] Error updating task duration:', {
+          taskId: id,
+          durationInSeconds: duration,
+          error
+        });
+        throw error;
+      }
+      
+      console.log('[TasksClient] Successfully updated task duration:', {
+        taskId: id,
+        durationInSeconds: duration,
+        result: data
+      });
+      
+      return data as Task;
+    } catch (error) {
+      console.error('[TasksClient] Unexpected error in updateExecutionDuration:', {
+        taskId: id,
+        durationInSeconds: duration,
+        error
+      });
+      throw error;
+    }
   },
 };

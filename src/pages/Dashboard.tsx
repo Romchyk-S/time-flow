@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Clock, ListTodo, FolderKanban, TrendingUp } from "lucide-react";
+import { Clock, ListTodo, FolderKanban, TrendingUp, Clock3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTimer } from "@/state/hooks/useTimer";
 import { useProjects } from "@/state/hooks/useProjects";
@@ -11,8 +11,11 @@ import { TaskInput } from "@/components/timer/TaskInput";
 import { ProjectSelect } from "@/components/timer/ProjectSelect";
 import { formatDurationLong } from "@/state/utils/timeUtils";
 import { todayStart, dayEnd } from "@/state/utils/dateUtils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
+import { tasksClient } from "@/api/clients/tasksClient";
+import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
+import { TaskWithProject } from "@/types";
 
 const Dashboard = () => {
   const { projects } = useProjects();
@@ -51,10 +54,38 @@ const Dashboard = () => {
 
   const todayStartStr = todayStart();
   const todayEndStr = dayEnd(new Date());
+  const queryClient = useQueryClient();
+  
   const todayEntries = useQuery({
     queryKey: ["time-entries-day", todayStartStr],
     queryFn: () => timeEntriesClient.getEntriesForDay(todayStartStr, todayEndStr),
   });
+
+  // Fetch tasks that were worked on today
+  const recentTasksQuery = useQuery({
+    queryKey: ["recent-tasks"],
+    queryFn: async () => {
+      // Get all tasks with their projects
+      const tasks = await tasksClient.getAll();
+      
+      // Filter tasks that were worked on today or have time entries today
+      const taskIdsFromToday = new Set(
+        (todayEntries.data ?? []).map(entry => (entry as { task_id: string }).task_id)
+      );
+      
+      return tasks.filter(task => 
+        taskIdsFromToday.has(task.id) || 
+        (task.last_used && new Date(task.last_used) >= new Date(todayStartStr))
+      );
+    },
+    enabled: !!todayEntries.data,
+  });
+
+  const handleTaskUpdated = () => {
+    // Invalidate both recent tasks and today's entries to ensure UI is up to date
+    queryClient.invalidateQueries({ queryKey: ["recent-tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["time-entries-day", todayStartStr] });
+  };
   const todaySeconds = (todayEntries.data ?? []).reduce((s, e) => s + (e.duration ?? 0), 0);
 
   const weekStart = new Date();
@@ -186,24 +217,31 @@ const Dashboard = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Clock3 className="h-5 w-5" />
+            <span>Recent Activity</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {todayEntries.data && todayEntries.data.length > 0 ? (
-            <ul className="space-y-2 text-sm">
-              {(todayEntries.data as { start_time: string; duration: number; task?: { name: string; project?: { name: string } } }[]).slice(0, 5).map((e) => (
-                <li key={e.start_time} className="flex justify-between">
-                  <span>
-                    {(e as { task?: { name: string; project?: { name: string } } }).task?.name ?? "—"} · {(e as { task?: { project?: { name: string } } }).task?.project?.name ?? "—"}
-                  </span>
-                  <span className="text-muted-foreground">{formatDurationLong(e.duration ?? 0)}</span>
-                </li>
-              ))}
-            </ul>
+          {recentTasksQuery.isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading recent tasks...</div>
+          ) : recentTasksQuery.data && recentTasksQuery.data.length > 0 ? (
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {recentTasksQuery.data
+                .sort((a, b) => 
+                  new Date(b.last_used || 0).getTime() - new Date(a.last_used || 0).getTime()
+                )
+                .slice(0, 6)
+                .map((task) => (
+                  <RecentActivityCard 
+                    key={task.id} 
+                    task={task as TaskWithProject}
+                    onTaskUpdated={handleTaskUpdated}
+                  />
+                ))}
+            </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No recent activity. Start tracking time on a task to see it here.
-            </p>
+            <p className="text-sm text-muted-foreground">No recent activity today.</p>
           )}
         </CardContent>
       </Card>

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
+import { getProjectColor } from "@/lib/colorUtils";
 import { useState, useEffect, useCallback } from "react";
 import { ProjectTaskList } from "./ProjectTaskList";
 import React from "react";
@@ -66,8 +67,12 @@ const ProjectCard = React.memo(function ProjectCard({ project, onEdit, onDelete,
           <div className="flex-grow min-w-0">
             <div className="flex items-center gap-2">
               <span
-                className="h-4 w-4 rounded-full flex-shrink-0"
-                style={{ backgroundColor: project.color }}
+                className={cn(
+                  'h-4 w-4 rounded-full flex-shrink-0',
+                  getProjectColor(project.color, 'bg'),
+                  'border',
+                  getProjectColor(project.color, 'border')
+                )}
               />
               <span className="font-medium truncate">{project.name}</span>
             </div>
@@ -93,7 +98,16 @@ const ProjectCard = React.memo(function ProjectCard({ project, onEdit, onDelete,
         </div>
       </div>
       
-      <div className={`transition-all duration-200 overflow-hidden ${isExpanded ? 'max-h-[1000px]' : 'max-h-0'}`}>
+      <div 
+        className={cn(
+          'transition-all duration-200 overflow-hidden',
+          isExpanded ? 'max-h-[1000px]' : 'max-h-0',
+          'border-t',
+          getProjectColor(project.color, 'border'),
+          'bg-opacity-20',
+          getProjectColor(project.color, 'bg')
+        )}
+      >
         <div className="p-4 pt-2">
           <ProjectTaskList projectId={project.id} onTaskUpdate={onTaskUpdate} />
         </div>

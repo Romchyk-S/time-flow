@@ -1,446 +1,425 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ListTodo, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import type { Project } from "@/types";
-import { useTimeEntriesForDay } from "@/state/hooks/useTimeEntries";
-import { useTasksForDate } from "@/state/hooks/useTasksForDate";
-import { useProjects } from "@/state/hooks/useProjects";
-import { useTimer } from "@/state/hooks/useTimer";
-import { useInvalidateTimeEntries } from "@/state/hooks/useTimeEntries";
-import { EntryGroupByProject, type EntryRow } from "@/components/entries/EntryGroupByProject";
-import { dayStart, formatDateKey, prevDay, nextDay, isSameDay, getTasksPageDateRange } from "@/state/utils/dateUtils";
-import { parseDurationToSeconds } from "@/state/utils/timeUtils";
-import { tasksClient } from "@/api/clients/tasksClient";
-import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
-import type { TaskStatus } from "@/types";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, ListTodo } from 'lucide-react';
+import { useTasksForDate } from '@/state/hooks/useTasksForDate';
+import { TasksHoverGrid } from '@/components/tasks/TasksHoverGrid';
+import { formatDateKey } from '@/state/utils/dateUtils';
+import { useToast } from '@/components/ui/use-toast';
+import { tasksClient } from '@/api/clients/tasksClient';
+import { useProjects } from '@/state/hooks/useProjects';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ProjectSelect } from '@/components/timer/ProjectSelect';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ProjectSelect } from "@/components/timer/ProjectSelect";
-import { Badge } from "@/components/ui/badge";
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: "not_started", label: "Not started" },
-  { value: "in_progress", label: "In progress" },
-  { value: "paused", label: "Paused" },
-  { value: "in_review", label: "In review" },
-  { value: "completed", label: "Completed" },
-];
+// Helper function to format date for display
+const formatDateDisplay = (date: Date) => {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
-export default function Tasks() {
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const dayStartStr = dayStart(selectedDate);
-  const { entries, refetch } = useTimeEntriesForDay(selectedDate);
-  const { data: tasksForDate = [], isLoading: isLoadingTasks } = useTasksForDate(selectedDate);
-  const { projects } = useProjects();
+// Helper function to check if a date is today
+const isToday = (date: Date) => {
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+};
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Entries:', entries);
-    console.log('Tasks for date:', tasksForDate);
-    console.log('Projects:', projects);
-  }, [entries, tasksForDate, projects]);
-  const { taskId: runningTaskId } = useTimer();
-  const invalidate = useInvalidateTimeEntries();
+export default function TasksPage() {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const { toast } = useToast();
+  const { data: tasks = [], isLoading, refetch } = useTasksForDate(selectedDate);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
-  const [editingDurationValue, setEditingDurationValue] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newTaskName, setNewTaskName] = useState("");
-  const [newTaskDescription, setNewTaskDescription] = useState("");
-  const [newTaskProjectId, setNewTaskProjectId] = useState<string | null>(null);
-  const [newTaskWorkDates, setNewTaskWorkDates] = useState<string[]>(() => [formatDateKey(new Date())]);
-  const [newTaskWorkDateInput, setNewTaskWorkDateInput] = useState("");
-
-  // Create a map of task IDs to their time entries for quick lookup
-  const taskTimeEntries = useMemo(() => {
-    const map = new Map<string, typeof entries[number]>();
-    for (const entry of entries) {
-      if (entry.task_id) {
-        map.set(entry.task_id, entry);
-      }
+  // Handle task updates
+  const handleTaskUpdated = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
     }
-    return map;
-  }, [entries]);
+  };
+  const { data: projects = [] } = useProjects();
 
-  // Group tasks by project and include time entry data if it exists
-  const groups = useMemo(() => {
-    const byProject = new Map<
-      string,
-      { 
-        project: {
-          id: string;
-          name: string;
-          description: string;
-          color: string;
-          created_at: string;
-          updated_at: string;
-        };
-        taskIds: Set<string>; 
-        totalSeconds: number; 
-        entries: EntryRow[] 
-      }
-    >();
+  // Task form state
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentTask, setCurrentTask] = useState<{
+    id?: string;
+    name: string;
+    description: string;
+    project_id: string;
+    status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'blocked' | 'in_review';
+    work_dates: string[];
+  }>({
+    name: '',
+    description: '',
+    project_id: '',
+    status: 'not_started',
+    work_dates: [formatDateKey(new Date())],
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Process tasks for the selected date
-    for (const task of tasksForDate) {
-      // Find the project for this task
-      const project: Project = projects.find(p => p.id === task.project_id) || {
-        id: task.project_id,
-        name: "Unknown Project",
-        description: "",
-        color: "#888",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      // Ensure all required fields are present
-      const projectWithDefaults: Project = {
-        id: project.id,
-        name: project.name || "Unknown Project",
-        description: project.description || "",
-        color: project.color || "#888",
-        created_at: project.created_at || new Date().toISOString(),
-        updated_at: project.updated_at || new Date().toISOString()
-      };
-      
-      if (!byProject.has(projectWithDefaults.id)) {
-        byProject.set(projectWithDefaults.id, {
-          project: projectWithDefaults,
-          taskIds: new Set(),
-          totalSeconds: 0,
-          entries: [],
+  // Open create task dialog
+  const openCreateDialog = () => {
+    setCurrentTask({
+      name: '',
+      description: '',
+      project_id: '',
+      status: 'not_started',
+      work_dates: [formatDateKey(selectedDate)],
+    });
+    setIsEditMode(false);
+    setIsTaskDialogOpen(true);
+  };
+
+  // Open edit task dialog
+  const openEditDialog = (task: any) => {
+    setCurrentTask({
+      id: task.id,
+      name: task.name,
+      description: task.description || '',
+      project_id: task.project_id || '',
+      status: task.status || 'not_started',
+      work_dates: task.work_dates || [formatDateKey(selectedDate)],
+    });
+    setIsEditMode(true);
+    setIsTaskDialogOpen(true);
+  };
+
+  // Handle date navigation
+  const navigateDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
+  };
+
+  // Handle date selection from calendar
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+      setIsCalendarOpen(false);
+    }
+  };
+
+  // Handle task save (create or update)
+  const handleSaveTask = async () => {
+    if (!currentTask.name || !currentTask.project_id) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (isEditMode && currentTask.id) {
+        // Update existing task
+        await tasksClient.update(currentTask.id, {
+          name: currentTask.name,
+          description: currentTask.description,
+          project_id: currentTask.project_id,
+          status: currentTask.status as any, // Type assertion needed due to type mismatch
+          work_dates: currentTask.work_dates,
+        });
+        toast({
+          title: "Success",
+          description: "Task updated successfully",
+        });
+      } else {
+        // Create new task
+        await tasksClient.create({
+          name: currentTask.name,
+          description: currentTask.description,
+          project_id: currentTask.project_id,
+          status: currentTask.status,
+          work_dates: [formatDateKey(selectedDate)],
+        });
+        toast({
+          title: "Success",
+          description: "Task created successfully",
         });
       }
-      
-      const g = byProject.get(projectWithDefaults.id)!;
-      const timeEntry = taskTimeEntries.get(task.id);
-      
-      g.taskIds.add(task.id);
-      const duration = timeEntry?.duration ?? 0;
-      g.totalSeconds += duration;
-      
-      g.entries.push({
-        id: timeEntry?.id ?? `task-${task.id}`,
-        taskId: task.id,
-        taskName: task.name,
-        projectId: project.id,
-        projectName: project.name,
-        projectColor: project.color,
-        status: task.status ?? "not_started",
-        duration: duration,
-        startTime: timeEntry?.start_time ?? null,
-        endTime: timeEntry?.end_time ?? null,
-        isRunning: runningTaskId === task.id,
+
+      // Reset form and refetch tasks
+      setIsTaskDialogOpen(false);
+      refetch();
+    } catch (error) {
+      console.error("Error saving task:", error);
+      toast({
+        title: "Error",
+        description: `Failed to ${isEditMode ? 'update' : 'create'} task. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle task deletion
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+      await tasksClient.delete(taskId);
+      toast({
+        title: "Success",
+        description: "Task deleted successfully",
+      });
+      refetch();
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive",
       });
     }
-
-    // Also include any time entries that don't have corresponding tasks in tasksForDate
-    for (const entry of entries) {
-      if (!entry.task_id || !entry.task) continue;
-      
-      const task = entry.task;
-      const projectFromTask = task.project;
-      const proj: Project = projectFromTask 
-        ? {
-            id: projectFromTask.id,
-            name: projectFromTask.name || "Unknown Project",
-            description: projectFromTask.description || "",
-            color: projectFromTask.color || "#888",
-            created_at: projectFromTask.created_at || new Date().toISOString(),
-            updated_at: projectFromTask.updated_at || new Date().toISOString()
-          }
-        : {
-            id: task.project_id,
-            name: "Unknown Project",
-            description: "",
-            color: "#888",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-      
-      // Skip if we've already processed this task from tasksForDate
-      const taskAlreadyProcessed = tasksForDate.some(t => t.id === task.id);
-      if (taskAlreadyProcessed) continue;
-      
-      if (!byProject.has(proj.id)) {
-        byProject.set(proj.id, {
-          project: proj,
-          taskIds: new Set(),
-          totalSeconds: 0,
-          entries: [],
-        });
-      }
-      
-      const g = byProject.get(proj.id)!;
-      if (!g.taskIds.has(task.id)) {
-        g.taskIds.add(task.id);
-        g.totalSeconds += entry.duration ?? 0;
-        
-        g.entries.push({
-          id: entry.id,
-          taskId: task.id,
-          taskName: task.name,
-          projectId: proj.id,
-          projectName: proj.name,
-          projectColor: proj.color,
-          status: task.status ?? "not_started",
-          duration: entry.duration ?? 0,
-          startTime: entry.start_time,
-          endTime: entry.end_time,
-          isRunning: runningTaskId === task.id,
-        });
-      }
-    }
-
-    return Array.from(byProject.values()).map((g) => ({
-      project: g.project,
-      taskCount: g.taskIds.size,
-      totalSeconds: g.totalSeconds,
-      entries: g.entries,
-    }));
-  }, [entries, runningTaskId, tasksForDate, taskTimeEntries]);
-
-  const { rangeStart, rangeEnd } = useMemo(getTasksPageDateRange, []);
-
-  const canGoPrev = useMemo(() => formatDateKey(selectedDate) > formatDateKey(rangeStart), [selectedDate, rangeStart]);
-  const canGoNext = useMemo(() => formatDateKey(selectedDate) < formatDateKey(rangeEnd), [selectedDate, rangeEnd]);
-
-  const handleEditTaskName = useCallback(
-    async (taskId: string, name: string) => {
-      if (!name.trim()) return;
-      await tasksClient.update(taskId, { name: name.trim() });
-      invalidate();
-      refetch();
-    },
-    [invalidate, refetch]
-  );
-
-  const handleEditProject = useCallback(
-    async (taskId: string, projectId: string) => {
-      await tasksClient.update(taskId, { project_id: projectId });
-      invalidate();
-      refetch();
-    },
-    [invalidate, refetch]
-  );
-
-  const handleEditDuration = useCallback(
-    async (entryId: string, durationSeconds: number) => {
-      await timeEntriesClient.update(entryId, { duration: durationSeconds });
-      setEditingEntryId(null);
-      invalidate();
-      refetch();
-    },
-    [invalidate, refetch]
-  );
-
-  const handleEditStatus = useCallback(
-    async (taskId: string, status: string) => {
-      await tasksClient.setStatus(taskId, status as TaskStatus);
-      invalidate();
-      refetch();
-    },
-    [invalidate, refetch]
-  );
-
-  const handleDeleteTask = useCallback(
-    async (taskId: string) => {
-      if (!window.confirm("Delete this task and all its time entries?")) return;
-      await tasksClient.delete(taskId);
-      invalidate();
-      refetch();
-    },
-    [invalidate, refetch]
-  );
-
-  const handleStartEditDuration = useCallback((entryId: string, currentSeconds: number) => {
-    setEditingEntryId(entryId);
-    const h = Math.floor(currentSeconds / 3600);
-    const m = Math.floor((currentSeconds % 3600) / 60);
-    setEditingDurationValue(`${h}:${m.toString().padStart(2, "0")}`);
-  }, []);
-
-  const handleDurationChange = useCallback((value: string) => {
-    setEditingDurationValue(value);
-  }, []);
-
-  const handleSaveDuration = useCallback(() => {
-    if (!editingEntryId) return;
-    const sec = parseDurationToSeconds(editingDurationValue);
-    if (sec >= 0) handleEditDuration(editingEntryId, sec);
-  }, [editingEntryId, editingDurationValue, handleEditDuration]);
-
-  const handleCancelEditDuration = useCallback(() => {
-    setEditingEntryId(null);
-  }, []);
-
-  const handleCreateTask = useCallback(async () => {
-    if (!newTaskName.trim() || !newTaskProjectId) return;
-    await tasksClient.create({
-      name: newTaskName.trim(),
-      project_id: newTaskProjectId,
-      description: newTaskDescription.trim() || undefined,
-      work_dates: newTaskWorkDates.length ? newTaskWorkDates : [formatDateKey(new Date())],
-    });
-    setNewTaskName("");
-    setNewTaskDescription("");
-    setNewTaskProjectId(null);
-    setNewTaskWorkDates([formatDateKey(new Date())]);
-    setCreateOpen(false);
-    invalidate();
-    refetch();
-  }, [newTaskName, newTaskDescription, newTaskProjectId, newTaskWorkDates, invalidate, refetch]);
-
-  const openCreateDialog = useCallback(() => {
-    setNewTaskWorkDates([formatDateKey(new Date())]);
-    setCreateOpen(true);
-  }, []);
-
-  const addWorkDate = useCallback(() => {
-    const d = newTaskWorkDateInput.trim().slice(0, 10);
-    if (!d || newTaskWorkDates.includes(d)) return;
-    setNewTaskWorkDates((prev) => [...prev, d].sort());
-    setNewTaskWorkDateInput("");
-  }, [newTaskWorkDateInput, newTaskWorkDates]);
-
-  const removeWorkDate = useCallback((dateKey: string) => {
-    setNewTaskWorkDates((prev) => prev.filter((d) => d !== dateKey));
-  }, []);
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="container mx-auto p-4 max-w-7xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Tasks</h2>
-          <p className="text-muted-foreground">Manage and track your tasks by day.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your daily tasks and track your progress
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setSelectedDate(prevDay(selectedDate))} disabled={!canGoPrev}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[140px] text-center font-medium">
-            {formatDateKey(selectedDate)}
-            {isSameDay(selectedDate, new Date()) && " (Today)"}
-          </span>
-          <Button variant="outline" size="icon" onClick={() => setSelectedDate(nextDay(selectedDate))} disabled={!canGoNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button onClick={openCreateDialog} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New task
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center bg-muted/50 rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigateDate(-1)}
+              className="h-8 w-8 p-0 hover:bg-background"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-8 px-3 font-normal',
+                    !selectedDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {isToday(selectedDate) ? 'Today' : format(selectedDate, 'MMM d, yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigateDate(1)}
+              className="h-8 w-8 p-0 hover:bg-background"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            
+            {!isToday(selectedDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDate(new Date())}
+                className="ml-1 h-8 text-sm"
+              >
+                Today
+              </Button>
+            )}
+          </div>
+          
+          <Button
+            onClick={openCreateDialog}
+            className="h-8"
+          >
+            <Plus className="mr-2 h-4 w-4" /> New Task
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="py-6">
-          {isLoadingTasks ? (
-        <div className="text-center py-12">Loading tasks...</div>
-      ) : groups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <ListTodo className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">No tasks for this day</h3>
-              <p className="text-sm text-muted-foreground">Time entries for the selected day will appear here, grouped by project.</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">
+            {isToday(selectedDate) 
+              ? "Today's Tasks" 
+              : `Tasks for ${format(selectedDate, 'EEEE, MMMM d, yyyy')}`}
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+          </span>
+        </div>
+        
+        {isLoading || isRefreshing ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+          </div>
+        ) : tasks.length > 0 ? (
+          <TasksHoverGrid
+            tasks={tasks}
+            onEditTask={(taskId) => {
+              const task = tasks.find(t => t.id === taskId);
+              if (task) openEditDialog(task);
+            }}
+            onDeleteTask={handleDeleteTask}
+            onTaskUpdated={handleTaskUpdated}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg">
+            <div className="rounded-full bg-muted p-3 mb-4">
+              <ListTodo className="h-6 w-6 text-muted-foreground" />
             </div>
-          ) : (
-            <EntryGroupByProject
-              groups={groups}
-              runningTaskId={runningTaskId}
-              onEditTaskName={handleEditTaskName}
-              onEditProject={handleEditProject}
-              onEditDuration={handleEditDuration}
-              onEditStatus={handleEditStatus}
-              onDeleteTask={handleDeleteTask}
-              editingEntryId={editingEntryId}
-              editingDurationValue={editingDurationValue}
-              onStartEditDuration={handleStartEditDuration}
-              onDurationChange={handleDurationChange}
-              onSaveDuration={handleSaveDuration}
-              onCancelEditDuration={handleCancelEditDuration}
-              statusOptions={STATUS_OPTIONS}
-              projects={projects}
-            />
-          )}
-        </CardContent>
-      </Card>
+            <h3 className="text-lg font-medium mb-1">No tasks for this day</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Get started by creating a new task
+            </p>
+            <Button onClick={openCreateDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
+          </div>
+        )}
+      </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+      {/* Task Form Dialog */}
+      <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create task</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Task' : 'Create New Task'}</DialogTitle>
+            <DialogDescription>
+              {isEditMode ? 'Update the task details below.' : 'Add a new task to your list.'}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Project</Label>
-              <ProjectSelect
-                projects={projects}
-                value={newTaskProjectId}
-                onValueChange={setNewTaskProjectId}
-                placeholder="Select project"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Task name</Label>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name *
+              </Label>
               <Input
-                value={newTaskName}
-                onChange={(e) => setNewTaskName(e.target.value)}
+                id="name"
+                value={currentTask.name}
+                onChange={(e) => setCurrentTask({...currentTask, name: e.target.value})}
+                className="col-span-3"
                 placeholder="Task name"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Description (optional)</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
               <Textarea
-                value={newTaskDescription}
-                onChange={(e) => setNewTaskDescription(e.target.value)}
-                placeholder="Task description"
-                rows={2}
-                className="resize-none"
+                id="description"
+                value={currentTask.description}
+                onChange={(e) => setCurrentTask({...currentTask, description: e.target.value})}
+                className="col-span-3"
+                placeholder="Task description (optional)"
+                rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Expected / work dates</Label>
-              <p className="text-xs text-muted-foreground">Default is today. Add or remove dates as needed.</p>
-              <div className="flex flex-wrap gap-2">
-                {newTaskWorkDates.map((d) => (
-                  <Badge key={d} variant="secondary" className="gap-1">
-                    {d}
-                    <button
-                      type="button"
-                      onClick={() => removeWorkDate(d)}
-                      className="ml-1 rounded-full hover:bg-muted-foreground/20"
-                      aria-label={`Remove ${d}`}
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  type="date"
-                  value={newTaskWorkDateInput}
-                  onChange={(e) => setNewTaskWorkDateInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addWorkDate())}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="project" className="text-right">
+                Project *
+              </Label>
+              <div className="col-span-3">
+                <ProjectSelect
+                  value={currentTask.project_id}
+                  onValueChange={(value) => setCurrentTask({...currentTask, project_id: value})}
+                  projects={projects}
                 />
-                <Button type="button" variant="outline" size="sm" onClick={addWorkDate}>
-                  Add date
-                </Button>
               </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select
+                value={currentTask.status}
+                onValueChange={(value) => setCurrentTask({...currentTask, status: value as any})}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="not_started">Not Started</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="in_review">In Review</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateTask} disabled={!newTaskName.trim() || !newTaskProjectId}>
-              Create
+            {isEditMode && (
+              <Button
+                variant="destructive"
+                onClick={() => currentTask.id && handleDeleteTask(currentTask.id)}
+                disabled={isSubmitting}
+                className="mr-auto"
+              >
+                Delete
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => setIsTaskDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              onClick={handleSaveTask}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditMode ? 'Saving...' : 'Creating...'}
+                </>
+              ) : isEditMode ? 'Save Changes' : 'Create Task'}
             </Button>
           </DialogFooter>
         </DialogContent>

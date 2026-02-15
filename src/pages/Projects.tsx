@@ -71,9 +71,6 @@ function ProjectsContent() {
     });
   }, [projects, isLoading, isError, isSuccess, error]);
 
-  // Calculate derived state after hooks
-  const usedColors = projectList.map((p) => p.color);
-
   // Show loading state
   if (isLoading) {
     return (
@@ -85,6 +82,9 @@ function ProjectsContent() {
       </div>
     );
   }
+
+  // Calculate derived state after hooks and before any conditional returns
+  const usedColors = projectList.map((p) => p.color);
 
   // Show error state
   if (isError) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTimerStore } from "../store/timerStore";
 import { timerService } from "../services/timerService";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
@@ -8,6 +9,7 @@ import { formatDateKey } from "../utils/dateUtils";
 import type { Project, Task } from "@/types";
 
 export function useTimer() {
+  const queryClient = useQueryClient();
   const store = useTimerStore.getState();
   const { entryId, taskId, taskName, projectId, projectName, projectColor, startTime } = useTimerStore();
   const [error, setError] = useState<string | null>(null);
@@ -78,22 +80,62 @@ export function useTimer() {
   );
 
   const stopTimer = useCallback(async () => {
-    if (!entryId || !startTime || !taskId) return;
+    if (!entryId || !startTime || !taskId) {
+      console.warn('[useTimer] Missing required data to stop timer:', { entryId, startTime, taskId });
+      return;
+    }
+    
     setError(null);
-    const duration = timerService.calculateDuration(startTime);
     
     try {
-      // Stop the time entry
-      await timeEntriesClient.stop(entryId, duration);
+      console.log('[useTimer] Stopping timer for task:', taskId);
       
-      // Update the task's execution duration
-      await tasksClient.updateExecutionDuration(taskId, Math.floor(duration / 1000)); // Convert to seconds
+      // Calculate duration in milliseconds
+      const durationMs = timerService.calculateDuration(startTime);
+      console.log(`[useTimer] Calculated duration: ${durationMs}ms`);
       
-      // Clear the running state
-      useTimerStore.getState().clearRunning();
+      // Convert to seconds and ensure we have at least 1 second
+      const durationSeconds = Math.max(1, Math.floor(durationMs / 1000));
+      console.log(`[useTimer] Rounded to: ${durationSeconds} seconds`);
+      
+      try {
+        // Stop the time entry with original milliseconds
+        console.log('[useTimer] Stopping time entry:', { entryId, durationMs });
+        await timeEntriesClient.stop(entryId, durationMs);
+        
+        // Update the task's execution duration (will be converted to minutes in the client)
+        console.log('[useTimer] Updating task execution duration:', { taskId, durationSeconds });
+        await tasksClient.updateExecutionDuration(taskId, durationSeconds);
+        
+        // Clear the running timer state
+        useTimerStore.getState().clearRunning();
+        console.log('[useTimer] Timer stopped and state cleared');
+        
+        // Invalidate relevant queries to refresh UI
+        const invalidationPromises = [
+          queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+          queryClient.invalidateQueries({ queryKey: ['recent-tasks'] }),
+          queryClient.invalidateQueries({ queryKey: ['time-entries-day'] })
+        ];
+        
+        await Promise.all(invalidationPromises);
+        console.log('[useTimer] Cache invalidated');
+        
+      } catch (updateError) {
+        console.error('[useTimer] Error during timer stop operations:', updateError);
+        throw updateError;
+      }
+      
     } catch (error) {
-      console.error('Error stopping timer:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[useTimer] Failed to stop timer:', {
+        error: errorMessage,
+        taskId,
+        entryId,
+        startTime
+      });
       setError('Failed to stop timer. Please try again.');
+      throw error; // Re-throw to allow error handling in the component
     }
   }, [entryId, startTime, taskId]);
 
