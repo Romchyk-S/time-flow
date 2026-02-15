@@ -1,4 +1,6 @@
-import { useState, useCallback, Component } from "react";
+import { useState, useCallback, Component, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { projectsClient as projectsApiClient } from "@/api/clients/projectsClient";
 import { Card, CardContent } from "@/components/ui/card";
 
 class ErrorBoundary extends Component<{ fallback: React.ReactNode; children: React.ReactNode }> {
@@ -24,7 +26,7 @@ import { FolderKanban, Plus } from "lucide-react";
 import { useProjects } from "@/state/hooks/useProjects";
 import { useInvalidateProjects } from "@/state/hooks/useProjects";
 import { projectsClient } from "@/api/clients/projectsClient";
-import { ProjectCard } from "@/components/projects/ProjectCard";
+import ProjectCard from "@/components/projects/ProjectCard";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -36,27 +38,81 @@ import {
 import type { Project } from "@/types";
 
 function ProjectsContent() {
+  // Debug mount/remount
+  console.log('ProjectsContent rendering');
+  
   // All hooks must be called unconditionally at the top level
-  const { projects = [], error, isLoading } = useProjects();
+  const { 
+    data: projects, 
+    error, 
+    isLoading, 
+    isError, 
+    isSuccess 
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectsApiClient.getAll(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+  // Log data changes
+  useEffect(() => {
+    if (isSuccess) {
+      console.log('Projects fetched successfully:', projects);
+    } else if (isError) {
+      console.error('Error fetching projects:', error);
+    }
+  }, [projects, isSuccess, isError, error]);
+
+  // Initialize projects as empty array if undefined
+  const projectList = projects || [];
+  
   const invalidate = useInvalidateProjects();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
-  console.log('Projects data:', { projects, error, isLoading });
+  // Debug effect for data changes
+  useEffect(() => {
+    console.log('Projects data changed:', { 
+      projects, 
+      count: projects?.length,
+      isLoading,
+      isError,
+      isSuccess,
+      error: error ? error.message : null 
+    });
+  }, [projects, isLoading, isError, isSuccess, error]);
 
   // Calculate derived state after hooks
-  const usedColors = projects?.map((p) => p.color) || [];
+  const usedColors = projectList.map((p) => p.color);
 
   // Show loading state
   if (isLoading) {
-    return <div>Loading projects...</div>;
+    return (
+      <div className="p-4">
+        <div>Loading projects...</div>
+        <div className="text-sm text-muted-foreground">
+          {projectList.length} projects currently loaded
+        </div>
+      </div>
+    );
   }
 
   // Show error state
-  if (error) {
+  if (isError) {
     console.error('Error loading projects:', error);
-    return <div>Error loading projects. Please try again.</div>;
+    return (
+      <div className="p-4 text-destructive">
+        <div>Error loading projects. Please try again.</div>
+        {error && (
+          <div className="mt-2 p-2 bg-destructive/10 rounded text-sm">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </div>
+        )}
+      </div>
+    );
   }
 
   const handleCreate = useCallback(async (data: { name: string; description: string; color: string }) => {
@@ -122,7 +178,7 @@ function ProjectsContent() {
 
       <Card>
         <CardContent className="py-6">
-          {projects.length === 0 ? (
+          {projectList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FolderKanban className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No projects yet</h3>
@@ -136,7 +192,7 @@ function ProjectsContent() {
             </div>
           ) : (
             <div className="space-y-3">
-              {projects.map((project) => (
+              {projectList.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}

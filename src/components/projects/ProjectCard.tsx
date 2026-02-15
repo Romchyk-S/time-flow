@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ProjectTaskList } from "./ProjectTaskList";
+import React from "react";
 
 export interface ProjectCardProps {
   project: Project;
@@ -13,8 +14,33 @@ export interface ProjectCardProps {
   className?: string;
 }
 
-export function ProjectCard({ project, onEdit, onDelete, onTaskUpdate, className }: ProjectCardProps) {
+const ProjectCard = React.memo(function ProjectCard({ project, onEdit, onDelete, onTaskUpdate, className }: ProjectCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+
+  // Debug mount/update
+  useEffect(() => {
+    console.log(`ProjectCard rendered/updated - ID: ${project.id}, Name: ${project.name}`);
+    return () => {
+      console.log(`ProjectCard unmounting - ID: ${project.id}, Name: ${project.name}`);
+    };
+  }, [project.id, project.name]);
+
+  const handleToggleExpand = useCallback(() => {
+    console.log(`Toggling expand for project ${project.id}`);
+    setIsExpanded(prev => !prev);
+  }, [project.id]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log(`Delete clicked for project ${project.id}`);
+    onDelete();
+  }, [onDelete, project.id]);
+
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log(`Edit clicked for project ${project.id}`);
+    onEdit();
+  }, [onEdit, project.id]);
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -23,7 +49,7 @@ export function ProjectCard({ project, onEdit, onDelete, onTaskUpdate, className
           "flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer",
           className
         )}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggleExpand}
         style={{
           borderLeft: `4px solid ${project.color}`,
         }}
@@ -53,7 +79,12 @@ export function ProjectCard({ project, onEdit, onDelete, onTaskUpdate, className
           </div>
         </div>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" onClick={onEdit} className="h-8 w-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={handleEditClick}
+          >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="icon" onClick={onDelete} className="h-8 w-8 text-destructive hover:text-destructive">
@@ -69,4 +100,18 @@ export function ProjectCard({ project, onEdit, onDelete, onTaskUpdate, className
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if these props change
+  return (
+    prevProps.project.id === nextProps.project.id &&
+    prevProps.project.name === nextProps.project.name &&
+    prevProps.project.color === nextProps.project.color &&
+    prevProps.onEdit === nextProps.onEdit &&
+    prevProps.onDelete === nextProps.onDelete &&
+    prevProps.onTaskUpdate === nextProps.onTaskUpdate
+  );
+});
+
+ProjectCard.displayName = 'ProjectCard';
+
+export default ProjectCard;
