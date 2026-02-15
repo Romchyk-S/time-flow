@@ -1,5 +1,5 @@
-import * as React from "react"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
-export function ConfirmDialog({
+interface ConfirmDialogProps extends React.HTMLAttributes<HTMLDivElement> {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void | Promise<void>;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  loading?: boolean;
+}
+
+const ConfirmDialog = React.forwardRef<HTMLDivElement, ConfirmDialogProps>(({
   open,
   onOpenChange,
   title,
@@ -19,17 +31,8 @@ export function ConfirmDialog({
   onConfirm,
   variant = "destructive",
   loading = false,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title: string
-  description: string
-  confirmText?: string
-  cancelText?: string
-  onConfirm: () => void
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-  loading?: boolean
-}) {
+  ...props
+}, ref) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -55,5 +58,10 @@ export function ConfirmDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+});
+
+ConfirmDialog.displayName = "ConfirmDialog";
+
+export { ConfirmDialog };
+export type { ConfirmDialogProps };
