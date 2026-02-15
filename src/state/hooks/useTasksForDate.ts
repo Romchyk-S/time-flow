@@ -9,8 +9,8 @@ type TaskWithProjectResult = Task & {
   original_date?: string;
 };
 
-// Define the database task type
-interface DbTask {
+// Define the database task row type from Supabase
+interface DbTaskRow {
   id: string;
   name: string;
   description: string | null;
@@ -42,7 +42,7 @@ async function fetchTasksForDate(date: Date, minTasks = 6): Promise<TaskWithProj
   // First, try to get tasks for the requested date
   const { data: tasks, error } = await supabase
     .from('tasks')
-    .select<DbTask>(`
+    .select(`
       *,
       project:projects (
         id,
@@ -65,28 +65,33 @@ async function fetchTasksForDate(date: Date, minTasks = 6): Promise<TaskWithProj
   let resultTasks: TaskWithProjectResult[] = [];
   
   if (tasks && tasks.length > 0) {
-    resultTasks = tasks.map(task => {
+    const typedTasks = tasks as DbTaskRow[];
+    resultTasks = typedTasks.map(task => {
+      // Create a default project if none exists
+      const project = task.project || {
+        id: task.project_id,
+        name: 'Unknown Project',
+        color: '#888888',
+        description: 'No project information available',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Create the task data with proper types
       const taskData: TaskWithProjectResult = {
         id: task.id,
         name: task.name,
         description: task.description,
         status: task.status,
-        is_active: true, // Default value for is_active
+        is_active: true,
         project_id: task.project_id,
-        project: task.project || {
-          id: task.project_id,
-          name: 'Unknown Project',
-          color: '#888888',
-          description: 'No project information available',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        last_used: task.last_used ? new Date(task.last_used) : null,
+        project: project,
+        last_used: task.last_used,
         total_duration: task.total_duration,
         usage_count: task.usage_count,
         work_dates: task.work_dates || [],
-        created_at: new Date(task.created_at),
-        updated_at: new Date(task.updated_at),
+        created_at: task.created_at,
+        updated_at: task.updated_at,
         original_date: dateStr
       };
       return taskData;
@@ -114,7 +119,7 @@ async function fetchTasksForDate(date: Date, minTasks = 6): Promise<TaskWithProj
       // Fetch tasks for the previous day
       const { data: prevDayTasks, error: prevDayError } = await supabase
         .from('tasks')
-        .select<DbTask>(`
+        .select(`
           *,
           project:projects (
             id,
@@ -134,32 +139,41 @@ async function fetchTasksForDate(date: Date, minTasks = 6): Promise<TaskWithProj
       }
       
       if (prevDayTasks && prevDayTasks.length > 0) {
+        const typedPrevDayTasks = prevDayTasks as DbTaskRow[];
+        
         // Map the tasks and add them to our results
-        const additionalTasks = prevDayTasks
+        const additionalTasks = typedPrevDayTasks
           .filter(task => !resultTasks.some(t => t.id === task.id)) // Remove duplicates
-          .map(task => ({
-            id: task.id,
-            name: task.name,
-            description: task.description,
-            status: task.status,
-            is_active: true,
-            project_id: task.project_id,
-            project: task.project || {
+          .map(task => {
+            // Create a default project if none exists
+            const project = task.project || {
               id: task.project_id,
               name: 'Unknown Project',
               color: '#888888',
               description: 'No project information available',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
-            },
-            last_used: task.last_used ? new Date(task.last_used) : null,
-            total_duration: task.total_duration,
-            usage_count: task.usage_count,
-            work_dates: task.work_dates || [],
-            created_at: new Date(task.created_at),
-            updated_at: new Date(task.updated_at),
-            original_date: previousDateStr
-          }));
+            };
+
+            // Create the task data with proper types
+            const taskData: TaskWithProjectResult = {
+              id: task.id,
+              name: task.name,
+              description: task.description,
+              status: task.status,
+              is_active: true,
+              project_id: task.project_id,
+              project: project,
+              last_used: task.last_used,
+              total_duration: task.total_duration,
+              usage_count: task.usage_count,
+              work_dates: task.work_dates || [],
+              created_at: task.created_at,
+              updated_at: task.updated_at,
+              original_date: previousDateStr
+            };
+            return taskData;
+          });
         
         console.log(`[fetchTasksForDate] Found ${additionalTasks.length} additional tasks from ${previousDateStr}`);
         
@@ -179,9 +193,11 @@ async function fetchTasksForDate(date: Date, minTasks = 6): Promise<TaskWithProj
     
     // If we still don't have enough tasks, sort by last_used to get the most recent ones
     if (resultTasks.length > 0) {
-      resultTasks.sort((a, b) => 
-        (b.last_used?.getTime() || 0) - (a.last_used?.getTime() || 0)
-      );
+      resultTasks.sort((a, b) => {
+        const timeA = a.last_used ? new Date(a.last_used).getTime() : 0;
+        const timeB = b.last_used ? new Date(b.last_used).getTime() : 0;
+        return timeB - timeA;
+      });
     }
   }
   
