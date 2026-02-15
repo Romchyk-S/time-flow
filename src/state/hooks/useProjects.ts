@@ -6,6 +6,11 @@ import type { Project } from "@/types";
 export function useProjects() {
   const query = useQuery<Project[]>({
     queryKey: ["projects"],
+    staleTime: Infinity,              // Projects rarely change
+    refetchOnWindowFocus: false,      // Don't refetch when window focused
+    refetchOnMount: false,            // Don't refetch on component mount
+    refetchInterval: false,           // No automatic interval refetch
+    retry: 1,                         // Only retry once on error
     queryFn: async () => {
       console.log('Fetching projects from Supabase...');
       try {

@@ -1017,3 +1017,7 @@ On Projects page under each project name I would like to have an arrow button to
   Added collapsible sections for tasks under each project
   Display task name, status, last worked date, and total duration
   Included loading states and error handling
+
+  I do not want the structure of the page to be Project -> Count of Tasks -> Tasks list. I want to open the project (with collapse toggle) and immediately see the tasks list, not open anything a second time. For each task we also need to set up update/delete functionality there.
+
+  
