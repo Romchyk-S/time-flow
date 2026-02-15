@@ -15,11 +15,6 @@ export function useTasksForDate(date: Date) {
   
   return useQuery<TaskWithProjectResult[]>({
     queryKey: ["tasks-for-date", dateStr],
-    staleTime: 5 * 60 * 1000,        // 5 minutes
-    refetchOnWindowFocus: false,      // Don't refetch when window focused
-    refetchOnMount: false,            // Don't refetch on component mount
-    refetchInterval: false,           // No automatic interval refetch
-    retry: 1,                         // Only retry once on error
     queryFn: async () => {
       // Fetch tasks that have the specified date in their work_dates array
       const { data: tasks, error } = await supabase
@@ -65,5 +60,8 @@ export function useTasksForDate(date: Date) {
     },
     staleTime: 30000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchInterval: false,
+    retry: 1,
   });
 }
