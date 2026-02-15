@@ -2,13 +2,12 @@
   "name": "time-tracker",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "format": "prettier --write .",
-    "type-check": "tsc --noEmit"
+ "scripts": {
+  "dev": "vite",
+  "build": "tsc && vite build",
+  "build:dev": "vite build --mode development",
+  "preview": "vite preview",
+  "lint": "eslint ."
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
