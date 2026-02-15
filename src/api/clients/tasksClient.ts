@@ -92,11 +92,25 @@ export const tasksClient = {
 
   async update(
     id: string,
-    updates: Partial<Pick<Task, "name" | "description" | "project_id" | "status" | "is_active" | "work_dates">>
+    updates: Partial<
+      Pick<
+        Task,
+        "name" | "description" | "project_id" | "status" | "is_active" | "work_dates" | "total_duration_seconds"
+      >
+    >
   ): Promise<Task> {
     const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
     if (error) throw error;
     return data as Task;
+  },
+
+  /** Atomically increment total_duration_seconds by given seconds */
+  async incrementTotalDuration(id: string, seconds: number): Promise<Task> {
+    // Use RPC or update with expression; Supabase supports pg syntax via upsert? We'll fetch current and update for simplicity
+    const current = await this.getById(id);
+    const currentTotal = current?.total_duration_seconds ?? 0;
+    const nextTotal = Math.max(0, currentTotal + Math.max(0, Math.floor(seconds)));
+    return this.update(id, { total_duration_seconds: nextTotal });
   },
 
   async delete(id: string): Promise<void> {

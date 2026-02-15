@@ -21,6 +21,7 @@ export interface Task {
   usage_count: number;
   last_used: string | null;
   work_dates: string[] | null;
+  total_duration_seconds: number; // accumulated total duration across all executions
   created_at: string;
   updated_at: string;
 }
