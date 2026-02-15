@@ -9,7 +9,7 @@ import { TimerDisplay } from "@/components/timer/TimerDisplay";
 import { TaskInput } from "@/components/timer/TaskInput";
 import { ProjectSelect } from "@/components/timer/ProjectSelect";
 import { formatDurationLong } from "@/state/utils/timeUtils";
-import { todayStart, dayEnd } from "@/state/utils/dateUtils";
+import { todayStart, dayEnd, formatDateKey, subDays } from "@/state/utils/dateUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
 import { tasksClient } from "@/api/clients/tasksClient";
@@ -82,18 +82,50 @@ const Dashboard = () => {
   const recentTasksQuery = useQuery({
     queryKey: ["recent-tasks"],
     queryFn: async () => {
-      // Get all tasks with their projects
       const tasks = await tasksClient.getAll();
-      
-      // Filter tasks that were worked on today or have time entries today
-      const taskIdsFromToday = new Set(
-        (todayEntries.data ?? []).map(entry => (entry as { task_id: string }).task_id)
+
+      const minTasks = 6;
+      const maxDaysBack = 30;
+      const now = new Date();
+
+      const selected: TaskWithProject[] = [];
+      const seen = new Set<string>();
+
+      for (let i = 0; i <= maxDaysBack && selected.length < minTasks; i++) {
+        const day = subDays(now, i);
+        const dateKey = formatDateKey(day);
+
+        const matches = tasks.filter((t) => (t.work_dates ?? []).includes(dateKey));
+        console.log(`[recent-tasks] dateKey=${dateKey} matches=${matches.length}`);
+
+        for (const t of matches) {
+          if (seen.has(t.id)) continue;
+          seen.add(t.id);
+          selected.push(t as TaskWithProject);
+          if (selected.length >= minTasks) break;
+        }
+      }
+
+      // If still empty, fall back to the existing 'today' heuristic for visibility
+      if (selected.length === 0) {
+        const taskIdsFromToday = new Set(
+          (todayEntries.data ?? []).map((entry) => (entry as { task_id: string }).task_id)
+        );
+        const fallback = tasks.filter(
+          (task) =>
+            taskIdsFromToday.has(task.id) ||
+            (task.last_used && new Date(task.last_used) >= new Date(todayStartStr))
+        );
+        console.log(`[recent-tasks] fallbackUsed count=${fallback.length}`);
+        return fallback as TaskWithProject[];
+      }
+
+      selected.sort(
+        (a, b) =>
+          new Date(b.last_used || 0).getTime() - new Date(a.last_used || 0).getTime()
       );
-      
-      return tasks.filter(task => 
-        taskIdsFromToday.has(task.id) || 
-        (task.last_used && new Date(task.last_used) >= new Date(todayStartStr))
-      );
+      console.log(`[recent-tasks] selectedUnique=${selected.length}`);
+      return selected;
     },
     enabled: !!todayEntries.data,
   });

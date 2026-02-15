@@ -50,7 +50,7 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
       <Card className="h-full flex flex-col">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
-            <CardTitle className="text-lg line-clamp-2">
+            <CardTitle className="text-lg">
               {task.name}
             </CardTitle>
             <Badge 
@@ -63,10 +63,13 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
           {task.project && (
             <div className="flex items-center text-sm text-muted-foreground mt-1">
               <div 
-                className="w-3 h-3 rounded-full mr-2" 
-                style={{ backgroundColor: task.project.color }}
+                className="w-3 h-3 rounded-full mr-2 border"
+                style={{
+                  backgroundColor: task.project.color,
+                  borderColor: "var(--border)",
+                }}
               />
-              <span className="truncate">{task.project.name}</span>
+              <span>{task.project.name}</span>
             </div>
           )}
         </CardHeader>

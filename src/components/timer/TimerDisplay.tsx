@@ -19,21 +19,21 @@ export function TimerDisplay({
   className,
 }: TimerDisplayProps) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-2 flex-wrap", className)}>
       <span className="font-mono text-sm tabular-nums">
         {formatDuration(elapsedTime)}
       </span>
       {taskName && (
-        <span className="text-sm text-foreground truncate max-w-[120px]" title={taskName}>
+        <span className="text-sm text-foreground whitespace-normal break-words" title={taskName}>
           {taskName}
         </span>
       )}
       {projectName && (
         <span
-          className="text-xs rounded px-1.5 py-0.5 truncate max-w-[80px]"
+          className="text-xs rounded px-1.5 py-0.5 border text-foreground whitespace-normal break-words"
           style={{
-            backgroundColor: projectColor ? `${projectColor}30` : "var(--muted)",
-            color: projectColor || "inherit",
+            backgroundColor: projectColor ? `${projectColor}1A` : "var(--muted)",
+            borderColor: projectColor || "var(--border)",
           }}
           title={projectName}
         >

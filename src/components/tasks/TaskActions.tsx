@@ -3,6 +3,7 @@ import { Play } from "lucide-react";
 import { tasksClient } from "@/api/clients/tasksClient";
 import { useToast } from "@/components/ui/use-toast";
 import { TaskWithProject } from "@/types";
+import { formatDateKey } from "@/state/utils/dateUtils";
 
 interface TaskActionsProps {
   task: TaskWithProject;
@@ -23,7 +24,7 @@ export function TaskActions({
 
   const handleStartTask = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = formatDateKey(new Date());
       const updates: any = {};
       
       // Update status if needed

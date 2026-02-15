@@ -7,6 +7,7 @@ import { Task, TaskStatus, Project } from "@/types";
 import { useTimer } from "@/state/hooks/useTimer";
 import { useQueryClient } from "@tanstack/react-query";
 import { projectsClient } from "@/api/clients/projectsClient";
+import { formatDateKey } from "@/state/utils/dateUtils";
 
 type TaskInput = {
   id?: string;
@@ -58,7 +59,7 @@ export function StartTaskButton({
       }
 
       // Prepare task updates
-      const today = new Date().toISOString().split('T')[0];
+      const today = formatDateKey(new Date());
       const workDates = new Set(task.work_dates || []);
       workDates.add(today);
       
