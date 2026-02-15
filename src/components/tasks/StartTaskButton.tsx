@@ -57,9 +57,6 @@ export function StartTaskButton({
         project = projectData;
       }
 
-      // Start the timer first to provide immediate feedback
-      startTimer(task.name, project);
-
       // Prepare task updates
       const today = new Date().toISOString().split('T')[0];
       const workDates = new Set(task.work_dates || []);
@@ -69,34 +66,54 @@ export function StartTaskButton({
         status: 'in_progress' as TaskStatus,
         work_dates: Array.from(workDates),
         last_used: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
+
+      let taskToStart = task;
 
       // Update or create the task
       if (task.id) {
         // Existing task - update it
-        await tasksClient.update(task.id, taskUpdates);
+        console.log('Updating existing task:', { taskId: task.id, updates: taskUpdates });
+        const updatedTask = await tasksClient.update(task.id, taskUpdates);
+        taskToStart = { ...task, ...updatedTask };
       } else {
         // New task - create it
-        await tasksClient.create({
+        console.log('Creating new task with:', { 
+          name: task.name, 
+          project_id: task.project_id, 
+          ...taskUpdates 
+        });
+        const newTask = await tasksClient.create({
           name: task.name,
           project_id: task.project_id,
+          status: 'in_progress', // Explicitly set status for new tasks
           ...taskUpdates
         });
+        taskToStart = { ...task, ...newTask };
       }
 
+      // Start the timer with the updated/created task
+      console.log('Starting timer for task:', taskToStart);
+      startTimer(taskToStart.name, project);
+
       // Invalidate relevant queries
+      console.log('Invalidating queries');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['tasks'] }),
         queryClient.invalidateQueries({ queryKey: ['recent-tasks'] }),
         queryClient.invalidateQueries({ queryKey: ['time-entries-day'] }),
-        queryClient.invalidateQueries({ queryKey: ['time-entries-week'] })
+        queryClient.invalidateQueries({ queryKey: ['time-entries-week'] }),
+        queryClient.invalidateQueries({ queryKey: ['tasks-for-date'] }),
       ]);
 
       // Show success toast
       toast({
         title: "Task started",
-        description: `Timer started for "${task.name}"`,
+        description: `Timer started for "${taskToStart.name}"`,
       });
+
+      console.log('Task started successfully:', taskToStart);
 
       // Call the onTaskUpdate callback if provided
       onTaskUpdate?.();
