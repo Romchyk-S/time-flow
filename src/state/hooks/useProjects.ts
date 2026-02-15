@@ -3,11 +3,11 @@ import { projectsClient } from "@/api/clients/projectsClient";
 import type { Project } from "@/types";
 
 export function useProjects() {
-  const q = useQuery({
+  const { data, ...rest } = useQuery<Project[]>({
     queryKey: ["projects"],
     queryFn: () => projectsClient.getAll(),
   });
-  return { ...q, projects: q.data ?? [] };
+  return { ...rest, projects: data ?? [], data };
 }
 
 export function useInvalidateProjects() {

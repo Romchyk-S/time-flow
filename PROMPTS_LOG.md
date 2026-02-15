@@ -994,10 +994,26 @@ Other statuses: no status icon; if the row is running, the small green dot still
 Default period set to Today (preset and initial range use getPresetRange("today")).
 
 
-### [2025-02-15 ..:..:..] [Cursor]
+### [2025-02-15 15:10:05] [Windsurf]
 
 **Prompt:**
 On Projects page under each project name I would like to have an arrow button to open and close a list of tasks. It needs to show: Task Name, status, last date worked on, total duration of execution (for the last one I think we need a new column in database, so create a migration and I will run it, while you connect the logic properly, so when the is stopped we add the execution time).
 
 **Changes/Outcome:**
-...
+- Database Migrations:
+  Added a new column execution_duration to the tasks table
+  Created a database function increment_task_duration to safely update the duration
+- TypeScript Types:
+  Updated the Task interface to include the execution_duration field
+  Added proper type definitions for the new functionality
+- Backend:
+  Added updateExecutionDuration method to tasksClient
+  Updated the stopTimer function to track and save execution duration
+- Frontend:
+  Created a new ProjectTaskList component to display tasks under each project
+  Updated the ProjectCard component to include the collapsible task list
+- Added a formatDuration utility function to display durations in a human-readable format
+- UI/UX:
+  Added collapsible sections for tasks under each project
+  Display task name, status, last worked date, and total duration
+  Included loading states and error handling

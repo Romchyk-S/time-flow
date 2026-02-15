@@ -78,12 +78,24 @@ export function useTimer() {
   );
 
   const stopTimer = useCallback(async () => {
-    if (!entryId || !startTime) return;
+    if (!entryId || !startTime || !taskId) return;
     setError(null);
     const duration = timerService.calculateDuration(startTime);
-    await timeEntriesClient.stop(entryId, duration);
-    useTimerStore.getState().clearRunning();
-  }, [entryId, startTime]);
+    
+    try {
+      // Stop the time entry
+      await timeEntriesClient.stop(entryId, duration);
+      
+      // Update the task's execution duration
+      await tasksClient.updateExecutionDuration(taskId, Math.floor(duration / 1000)); // Convert to seconds
+      
+      // Clear the running state
+      useTimerStore.getState().clearRunning();
+    } catch (error) {
+      console.error('Error stopping timer:', error);
+      setError('Failed to stop timer. Please try again.');
+    }
+  }, [entryId, startTime, taskId]);
 
   return {
     isRunning,

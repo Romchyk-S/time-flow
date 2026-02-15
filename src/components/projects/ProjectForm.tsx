@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ColorPicker } from "./ColorPicker";
 import { pickDistinctPastel } from "@/state/utils/colorUtils";
 import type { Project } from "@/types";
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils";
 export interface ProjectFormProps {
   project?: Project | null;
   usedColors: string[];
-  onSubmit: (data: { name: string; color: string }) => void;
+  onSubmit: (data: { name: string; description: string; color: string }) => void;
   onCancel: () => void;
   className?: string;
 }
@@ -23,6 +24,7 @@ export function ProjectForm({
   className,
 }: ProjectFormProps) {
   const [name, setName] = useState(project?.name ?? "");
+  const [description, setDescription] = useState(project?.description ?? "");
   const [color, setColor] = useState(
     project?.color ?? pickDistinctPastel(usedColors)
   );
@@ -30,7 +32,11 @@ export function ProjectForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name: name.trim(), color });
+    onSubmit({ 
+      name: name.trim(), 
+      description: description.trim(), 
+      color 
+    });
   };
 
   return (
@@ -43,6 +49,16 @@ export function ProjectForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="Project name"
           required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="project-description">Description</Label>
+        <Textarea
+          id="project-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Project description (optional)"
+          rows={3}
         />
       </div>
       <div className="space-y-2">

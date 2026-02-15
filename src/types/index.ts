@@ -2,6 +2,7 @@
 export interface Project {
   id: string;
   name: string;
+  description: string | null;
   color: string;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface Task {
   usage_count: number;
   last_used: string | null;
   work_dates: string[] | null;
+  execution_duration: string | null; // Stored as an ISO 8601 duration string (e.g., 'PT1H30M' for 1 hour and 30 minutes)
   created_at: string;
   updated_at: string;
 }

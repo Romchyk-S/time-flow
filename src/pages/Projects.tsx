@@ -1,5 +1,24 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, Component } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+
+class ErrorBoundary extends Component<{ fallback: React.ReactNode; children: React.ReactNode }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 import { Button } from "@/components/ui/button";
 import { FolderKanban, Plus } from "lucide-react";
 import { useProjects } from "@/state/hooks/useProjects";
@@ -7,6 +26,7 @@ import { useInvalidateProjects } from "@/state/hooks/useProjects";
 import { projectsClient } from "@/api/clients/projectsClient";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { ProjectForm } from "@/components/projects/ProjectForm";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -15,22 +35,42 @@ import {
 } from "@/components/ui/dialog";
 import type { Project } from "@/types";
 
-export default function Projects() {
-  const { projects } = useProjects();
+function ProjectsContent() {
+  // All hooks must be called unconditionally at the top level
+  const { projects = [], error, isLoading } = useProjects();
   const invalidate = useInvalidateProjects();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
-  const usedColors = projects.map((p) => p.color);
+  console.log('Projects data:', { projects, error, isLoading });
 
-  const handleCreate = useCallback(async (data: { name: string; color: string }) => {
+  // Calculate derived state after hooks
+  const usedColors = projects?.map((p) => p.color) || [];
+
+  // Show loading state
+  if (isLoading) {
+    return <div>Loading projects...</div>;
+  }
+
+  // Show error state
+  if (error) {
+    console.error('Error loading projects:', error);
+    return <div>Error loading projects. Please try again.</div>;
+  }
+
+  const handleCreate = useCallback(async (data: { name: string; description: string; color: string }) => {
     await projectsClient.create(data);
     invalidate();
     setDialogOpen(false);
   }, [invalidate]);
 
+  const handleTaskUpdate = useCallback(() => {
+    invalidate();
+  }, [invalidate]);
+
   const handleUpdate = useCallback(
-    async (data: { name: string; color: string }) => {
+    async (data: { name: string; description: string; color: string }) => {
       if (!editingProject) return;
       await projectsClient.update(editingProject.id, data);
       invalidate();
@@ -41,14 +81,21 @@ export default function Projects() {
 
   const handleDelete = useCallback(
     async (project: Project) => {
-      if (!window.confirm(`Delete project "${project.name}" and all its tasks and time entries?`))
-        return;
-      await projectsClient.delete(project.id);
-      invalidate();
-      if (editingProject?.id === project.id) setEditingProject(null);
+      setDeletingProject(project);
     },
-    [editingProject, invalidate]
+    []
   );
+
+  const confirmDelete = useCallback(async () => {
+    if (!deletingProject) return;
+    
+    await projectsClient.delete(deletingProject.id);
+    invalidate();
+    if (editingProject?.id === deletingProject.id) {
+      setEditingProject(null);
+    }
+    setDeletingProject(null);
+  }, [deletingProject, invalidate, editingProject]);
 
   const openCreate = () => {
     setEditingProject(null);
@@ -95,6 +142,7 @@ export default function Projects() {
                   project={project}
                   onEdit={() => openEdit(project)}
                   onDelete={() => handleDelete(project)}
+                  onTaskUpdate={handleTaskUpdate}
                 />
               ))}
             </div>
@@ -118,6 +166,24 @@ export default function Projects() {
           />
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deletingProject}
+        onOpenChange={(open) => !open && setDeletingProject(null)}
+        title={`Delete "${deletingProject?.name}"?`}
+        description="This will permanently delete the project and all its associated tasks and time entries. This action cannot be undone."
+        confirmText="Delete Project"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
+  );
+}
+
+export default function Projects() {
+  return (
+    <ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
+      <ProjectsContent />
+    </ErrorBoundary>
   );
 }

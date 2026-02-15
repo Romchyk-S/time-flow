@@ -92,7 +92,7 @@ export const tasksClient = {
 
   async update(
     id: string,
-    updates: Partial<Pick<Task, "name" | "description" | "project_id" | "status" | "is_active" | "work_dates">>
+    updates: Partial<Pick<Task, "name" | "description" | "project_id" | "status" | "is_active" | "work_dates" | "execution_duration">>
   ): Promise<Task> {
     const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
     if (error) throw error;
@@ -106,5 +106,15 @@ export const tasksClient = {
 
   async setStatus(id: string, status: TaskStatus): Promise<Task> {
     return this.update(id, { status });
+  },
+
+  async updateExecutionDuration(id: string, durationInSeconds: number): Promise<Task> {
+    const { data, error } = await supabase.rpc('increment_task_duration', {
+      task_id: id,
+      duration_seconds: durationInSeconds
+    });
+    
+    if (error) throw error;
+    return data as Task;
   },
 };
