@@ -1,23 +1,36 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Task, TaskStatus } from "@/types";
-import type { Database } from '@/integrations/supabase/types';
 
-type DbTask = Database['public']['Tables']['tasks']['Row'];
-type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
-type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
+// Define the database task type that matches our actual database schema
+type DbTask = {
+  id: string;
+  name: string;
+  description: string | null;
+  project_id: string;
+  status: TaskStatus;
+  is_active: boolean;
+  usage_count: number;
+  last_used: string | null;
+  work_dates: string[] | null;
+  total_duration: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type TaskInsert = Omit<DbTask, 'id' | 'created_at' | 'updated_at'>;
+type TaskUpdate = Partial<Omit<DbTask, 'id' | 'created_at'>>;
 
 // Helper to map database task to our app's Task type
 const mapDbTaskToAppTask = (dbTask: DbTask): Task => ({
   id: dbTask.id,
-  name: dbTask.title,
+  name: dbTask.name,
   description: dbTask.description,
-  project_id: dbTask.project_id || '',
-  status: dbTask.status as TaskStatus,
-  is_active: !dbTask.is_completed,
-  usage_count: 0, // Not in DB schema, default to 0
-  last_used: dbTask.started_at,
+  project_id: dbTask.project_id,
+  status: dbTask.status,
+  is_active: dbTask.is_active,
+  last_used: dbTask.last_used,
   work_dates: dbTask.work_dates || [],
-  total_duration: dbTask.actual_duration || 0,
+  total_duration: dbTask.total_duration || 0,
   created_at: dbTask.created_at,
   updated_at: dbTask.updated_at,
 });
@@ -26,20 +39,11 @@ const mapDbTaskToAppTask = (dbTask: DbTask): Task => ({
 const mapAppTaskToDbTask = (task: Partial<Task>): Partial<TaskUpdate> => {
   const dbTask: Record<string, unknown> = { ...task };
   
-  if ('name' in dbTask) {
-    dbTask.title = dbTask.name;
-    delete dbTask.name;
-  }
+  // No need to map name as it's the same in both schemas
   
-  if ('is_active' in dbTask) {
-    dbTask.is_completed = !(dbTask.is_active as boolean);
-    delete dbTask.is_active;
-  }
+  // Map is_active to is_active (no change needed)
   
-  if ('total_duration' in dbTask) {
-    dbTask.actual_duration = dbTask.total_duration as number;
-    delete dbTask.total_duration;
-  }
+  // Map total_duration to total_duration (no change needed)
   
   return dbTask as Partial<TaskUpdate>;
 };
@@ -53,8 +57,8 @@ export const tasksClient = {
       .from("tasks")
       .select("*")
       .eq("project_id", projectId)
-      .order("order_index", { ascending: true })
-      .order("started_at", { ascending: false, nullsFirst: false });
+      .order("usage_count", { ascending: false })
+      .order("last_used", { ascending: false, nullsFirst: true });
       
     if (options?.isActive !== undefined) {
       q = options.isActive 
@@ -63,7 +67,7 @@ export const tasksClient = {
     }
     
     if (options?.searchTerm?.trim()) {
-      q = q.ilike("title", `%${options.searchTerm.trim()}%`);
+      q = q.ilike("name", `%${options.searchTerm.trim()}%`);
     }
     if (options?.limit) q = q.limit(options.limit);
     
@@ -76,11 +80,12 @@ export const tasksClient = {
 
   async findByNameAndProject(name: string, projectId: string): Promise<Task | null> {
     const { data, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("project_id", projectId)
-      .ilike("title", name.trim())
+      .from('tasks')
+      .select('*')
+      .eq('name', name.trim())
+      .eq('project_id', projectId)
       .maybeSingle();
+
     if (error) throw error;
     return data ? mapDbTaskToAppTask(data) : null;
   },
@@ -97,7 +102,7 @@ export const tasksClient = {
       throw error;
     }
     
-    return this.mapDbTaskToAppTask(data);
+    return mapDbTaskToAppTask(data);
   },
 
   async getAll(): Promise<Task[]> {
@@ -105,7 +110,7 @@ export const tasksClient = {
       .from("tasks")
       .select("*, project:projects(*)")
       .neq("status", 'completed')
-      .order("title");
+      .order("name");
       
     if (error) throw error;
     
@@ -137,36 +142,32 @@ export const tasksClient = {
     status?: TaskStatus;
     user_id?: string;
   }): Promise<Task> {
-    const taskToCreate: Omit<TaskInsert, 'id'> = {
-      title: input.name.trim(),
+    const taskToCreate: TaskInsert = {
+      name: input.name.trim(),
       project_id: input.project_id,
       description: input.description ?? null,
-      work_dates: input.work_dates ?? [],
-      status: (input.status ?? 'not_started') as 'not_started' | 'in_progress' | 'paused' | 'in_review' | 'completed',
-      user_id: input.user_id || '',
-      actual_duration: 0,
-      is_completed: false,
-      priority: 'medium',
-      tags: [],
-      order_index: 0,
-      is_recurring: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      work_dates: input.work_dates?.map(d => d.split('T')[0]) ?? [],
+      status: input.status ?? 'not_started',
+      is_active: true,
+      total_duration: 0,
+      usage_count: 0,
+      last_used: null
     };
 
-    const { data, error } = await (supabase
+    const { data, error } = await supabase
       .from('tasks')
-      .insert([taskToCreate])
+      .insert(taskToCreate)
       .select()
-      .single() as Promise<{ data: DbTask | null; error: any }>);
+      .single();
       
     if (error || !data) {
       throw error || new Error('Failed to create task');
     }
+    
+    // Convert DbTask to our app's Task type
     return mapDbTaskToAppTask(data);
   },
 
-  /** Add today to task's work_dates if not already present (call when starting timer). */
   async addWorkDateIfNeeded(taskId: string, dateKey: string): Promise<Task | null> {
     const task = await this.getById(taskId);
     if (!task) return null;
@@ -193,15 +194,16 @@ export const tasksClient = {
     id: string,
     updates: Partial<Omit<Task, 'id' | 'created_at' | 'updated_at'>>
   ): Promise<Task> {
-    const dbUpdates = mapAppTaskToDbTask(updates);
-    (dbUpdates as { updated_at: string }).updated_at = new Date().toISOString();
+    // Convert app task updates to database format
+    const dbUpdates: Partial<DbTask> = { ...updates };
+    dbUpdates.updated_at = new Date().toISOString();
     
-    const { data, error } = await (supabase
+    const { data, error } = await supabase
       .from('tasks')
       .update(dbUpdates)
       .eq('id', id)
       .select()
-      .single() as Promise<{ data: DbTask | null; error: any }>);
+      .single();
       
     if (error || !data) {
       throw error || new Error('Failed to update task');
@@ -209,6 +211,72 @@ export const tasksClient = {
     return mapDbTaskToAppTask(data);
   },
   
+  async incrementUsage(taskId: string): Promise<Task> {
+    // First update the usage count
+    const { data: taskData } = await supabase
+      .from('tasks')
+      .select('usage_count')
+      .eq('id', taskId)
+      .single();
+      
+    if (!taskData) throw new Error('Task not found');
+    
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ 
+        usage_count: (taskData.usage_count || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .select()
+      .single();
+      
+    if (error || !data) throw error || new Error('Failed to update task usage');
+    
+    return mapDbTaskToAppTask(data);
+  },
+  
+  async updateLastUsed(taskId: string): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('tasks')
+      .update({ 
+        last_used: now, 
+        updated_at: now 
+      })
+      .eq('id', taskId);
+      
+    if (error) throw error;
+  },
+  
+  async incrementDuration(taskId: string, seconds: number): Promise<Task> {
+    const minutes = Math.ceil(seconds / 60);
+    
+    // First get the current duration
+    const { data: taskData } = await supabase
+      .from('tasks')
+      .select('total_duration')
+      .eq('id', taskId)
+      .single();
+      
+    if (!taskData) throw new Error('Task not found');
+    
+    // Update the duration directly
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ 
+        total_duration: (taskData.total_duration || 0) + minutes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .select()
+      .single();
+      
+    if (error || !data) throw error || new Error('Failed to update task duration');
+    
+    return mapDbTaskToAppTask(data);
+  },
+
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if (error) throw error;
