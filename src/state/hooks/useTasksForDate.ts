@@ -101,15 +101,88 @@ async function fetchTasksForDate(date: Date, minTasks = 6): Promise<TaskWithProj
   // If we don't have enough tasks, fetch from previous days
   const tasksNeeded = minTasks - resultTasks.length;
   if (tasksNeeded > 0) {
-    const previousDay = subDays(date, 1);
-    const previousDayTasks = await fetchTasksForDate(previousDay, tasksNeeded);
+    let currentDate = new Date(date);
+    let daysBack = 1;
+    const maxDaysBack = 30; // Safety limit to prevent infinite loops
     
-    // Add tasks from previous day, ensuring we don't exceed the number needed
-    const additionalTasks = previousDayTasks
-      .filter(task => !resultTasks.some(t => t.id === task.id)) // Remove duplicates
-      .slice(0, tasksNeeded);
+    while (resultTasks.length < minTasks && daysBack <= maxDaysBack) {
+      const previousDate = subDays(currentDate, 1);
+      const previousDateStr = formatDateKey(previousDate);
+      
+      console.log(`[fetchTasksForDate] Fetching tasks for previous day: ${previousDateStr}`);
+      
+      // Fetch tasks for the previous day
+      const { data: prevDayTasks, error: prevDayError } = await supabase
+        .from('tasks')
+        .select<DbTask>(`
+          *,
+          project:projects (
+            id,
+            name,
+            color,
+            description,
+            created_at,
+            updated_at
+          )
+        `)
+        .contains('work_dates', [previousDateStr])
+        .order('last_used', { ascending: false });
+      
+      if (prevDayError) {
+        console.error(`Error fetching tasks for ${previousDateStr}:`, prevDayError);
+        break;
+      }
+      
+      if (prevDayTasks && prevDayTasks.length > 0) {
+        // Map the tasks and add them to our results
+        const additionalTasks = prevDayTasks
+          .filter(task => !resultTasks.some(t => t.id === task.id)) // Remove duplicates
+          .map(task => ({
+            id: task.id,
+            name: task.name,
+            description: task.description,
+            status: task.status,
+            is_active: true,
+            project_id: task.project_id,
+            project: task.project || {
+              id: task.project_id,
+              name: 'Unknown Project',
+              color: '#888888',
+              description: 'No project information available',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            },
+            last_used: task.last_used ? new Date(task.last_used) : null,
+            total_duration: task.total_duration,
+            usage_count: task.usage_count,
+            work_dates: task.work_dates || [],
+            created_at: new Date(task.created_at),
+            updated_at: new Date(task.updated_at),
+            original_date: previousDateStr
+          }));
+        
+        console.log(`[fetchTasksForDate] Found ${additionalTasks.length} additional tasks from ${previousDateStr}`);
+        
+        // Add the new tasks to our results
+        resultTasks = [...resultTasks, ...additionalTasks];
+      }
+      
+      // Move to the previous day
+      currentDate = previousDate;
+      daysBack++;
+      
+      // If we've reached the minimum number of tasks, we can stop
+      if (resultTasks.length >= minTasks) {
+        break;
+      }
+    }
     
-    resultTasks = [...resultTasks, ...additionalTasks];
+    // If we still don't have enough tasks, sort by last_used to get the most recent ones
+    if (resultTasks.length > 0) {
+      resultTasks.sort((a, b) => 
+        (b.last_used?.getTime() || 0) - (a.last_used?.getTime() || 0)
+      );
+    }
   }
   
   return resultTasks;
