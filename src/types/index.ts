@@ -1,54 +1,96 @@
-// Project related types
+// Project – matches Supabase projects table
 export interface Project {
   id: string;
   name: string;
   color: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
-  is_active: boolean;
 }
 
-// Task status types
-export type TaskStatus = 'not_started' | 'in_progress' | 'in_review' | 'completed';
+// Task status
+export type TaskStatus = "not_started" | "in_progress" | "in_review" | "completed";
 
-// Task related types
+// Task – matches Supabase tasks table
 export interface Task {
   id: string;
-  title: string;
+  name: string;
   description: string | null;
-  status: TaskStatus;
   project_id: string;
-  user_id: string;
+  status: TaskStatus;
+  is_active: boolean;
+  usage_count: number;
+  last_used: string | null;
   created_at: string;
   updated_at: string;
-  completed_at: string | null;
-  estimated_duration: number | null;
 }
 
-// Time entry related types
+// Time entry – matches Supabase time_entries table
 export interface TimeEntry {
   id: string;
   task_id: string;
-  user_id: string;
   start_time: string;
   end_time: string | null;
-  duration: number | null;
+  duration: number;
   notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// Combined types
+// Joined / view types
+export interface TaskWithProject extends Task {
+  project?: Project;
+}
+
+export interface TimeEntryWithTask extends TimeEntry {
+  task?: Task & { project?: Project };
+}
+
 export interface TaskWithRelations extends Task {
   project: Project;
-  time_entries: TimeEntry[];
+  time_entries?: TimeEntry[];
   total_time_spent: number;
-  is_running: boolean;
+  is_running?: boolean;
 }
 
 export interface ProjectWithStats extends Project {
   task_count: number;
   total_time_spent: number;
   last_worked_on: string | null;
+}
+
+// Report types
+export interface ReportSummary {
+  totalSeconds: number;
+  projectCount: number;
+  taskCount: number;
+  averageDailySeconds: number;
+  workDaysCount: number;
+}
+
+export interface ProjectBreakdownRow {
+  projectId: string;
+  projectName: string;
+  projectColor: string;
+  totalSeconds: number;
+  percentOfTotal: number;
+  taskCount: number;
+}
+
+export interface DetailedTaskRow {
+  date: string;
+  projectName: string;
+  projectColor: string;
+  taskName: string;
+  durationSeconds: number;
+  timeRange: string;
+  completedInRange: boolean;
+  taskId: string;
+  entryId: string;
+}
+
+export interface DailySummaryRow {
+  date: string;
+  totalSeconds: number;
+  projectCount: number;
+  taskCount: number;
 }

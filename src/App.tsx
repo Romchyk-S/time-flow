@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { FloatingTimer } from "@/components/timer/FloatingTimer";
 import Dashboard from "@/pages/Dashboard";
 import Tasks from "@/pages/Tasks";
 import Projects from "@/pages/Projects";
@@ -24,6 +25,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SidebarProvider>
+          <FloatingTimer />
           <div className="min-h-screen flex w-full">
             <AppSidebar />
             <div className="flex-1 flex flex-col min-w-0">
