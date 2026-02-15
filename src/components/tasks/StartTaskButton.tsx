@@ -71,12 +71,36 @@ export function StartTaskButton({
 
       let taskToStart = task;
 
+      // First, try to find an existing task with the same name and project
+      if (!task.id) {
+        try {
+          const existingTask = await tasksClient.findByNameAndProject(task.name, task.project_id);
+          if (existingTask) {
+            console.log('Found existing task, updating instead of creating new:', existingTask);
+            task = { ...existingTask };
+          }
+        } catch (error) {
+          console.warn('Error checking for existing task, will try to create new one', error);
+        }
+      }
+
       // Update or create the task
       if (task.id) {
         // Existing task - update it
         console.log('Updating existing task:', { taskId: task.id, updates: taskUpdates });
-        const updatedTask = await tasksClient.update(task.id, taskUpdates);
-        taskToStart = { ...task, ...updatedTask };
+        try {
+          const updatedTask = await tasksClient.update(task.id, taskUpdates);
+          taskToStart = { ...task, ...updatedTask };
+        } catch (updateError) {
+          console.error('Error updating task, will try to find it again:', updateError);
+          // If update fails, try to get the latest version of the task
+          const freshTask = await tasksClient.getById(task.id);
+          if (freshTask) {
+            taskToStart = { ...freshTask };
+          } else {
+            throw new Error('Task not found after update attempt');
+          }
+        }
       } else {
         // New task - create it
         console.log('Creating new task with:', { 
@@ -84,13 +108,31 @@ export function StartTaskButton({
           project_id: task.project_id, 
           ...taskUpdates 
         });
-        const newTask = await tasksClient.create({
-          name: task.name,
-          project_id: task.project_id,
-          status: 'in_progress', // Explicitly set status for new tasks
-          ...taskUpdates
-        });
-        taskToStart = { ...task, ...newTask };
+        try {
+          const newTask = await tasksClient.create({
+            name: task.name,
+            project_id: task.project_id,
+            status: 'in_progress',
+            ...taskUpdates
+          });
+          taskToStart = { ...task, ...newTask };
+        } catch (createError: any) {
+          // If we get a unique constraint violation, try to find the existing task
+          if (createError.code === '23505') { // PostgreSQL unique violation error code
+            console.log('Task already exists, finding it...');
+            const existingTask = await tasksClient.findByNameAndProject(task.name, task.project_id);
+            if (existingTask) {
+              console.log('Found existing task after conflict:', existingTask);
+              // Update the existing task
+              const updatedTask = await tasksClient.update(existingTask.id, taskUpdates);
+              taskToStart = { ...existingTask, ...updatedTask };
+            } else {
+              throw new Error('Task creation failed due to duplicate key, but could not find the existing task');
+            }
+          } else {
+            throw createError;
+          }
+        }
       }
 
       // Start the timer with the updated/created task
