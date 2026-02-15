@@ -56,7 +56,12 @@ export const tasksClient = {
       .order("order_index", { ascending: true })
       .order("started_at", { ascending: false, nullsFirst: false });
       
-    if (options?.isActive !== undefined) q = q.eq("is_completed", !options.isActive);
+    if (options?.isActive !== undefined) {
+      q = options.isActive 
+        ? q.neq("status", 'completed')
+        : q.eq("status", 'completed');
+    }
+    
     if (options?.searchTerm?.trim()) {
       q = q.ilike("title", `%${options.searchTerm.trim()}%`);
     }
@@ -99,7 +104,7 @@ export const tasksClient = {
     const { data, error } = await supabase
       .from("tasks")
       .select("*, project:projects(*)")
-      .eq("is_completed", false)
+      .neq("status", 'completed')
       .order("title");
       
     if (error) throw error;
