@@ -51,6 +51,13 @@ export function prevDay(date: Date): Date {
   return d;
 }
 
+/** Subtract days from a date */
+export function subDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() - days);
+  return result;
+}
+
 /** Next calendar day (one day forward) */
 export function nextDay(date: Date): Date {
   const d = new Date(date);
