@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { TaskForm } from "@/components/forms/TaskForm";
+import { useTimerStore } from "@/state/store/timerStore";
 
 interface ProjectTaskListProps {
   projectId: string;
@@ -31,6 +32,7 @@ const ProjectTaskListComponent = React.forwardRef<HTMLDivElement, ProjectTaskLis
   const [currentTask, setCurrentTask] = useState<Partial<Task> | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const { tasks, isLoading, refetch } = useTasks(projectId);
+  const runningTaskId = useTimerStore((s) => s.taskId);
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['projects'],
@@ -102,8 +104,18 @@ const ProjectTaskListComponent = React.forwardRef<HTMLDivElement, ProjectTaskLis
         <div className="col-span-2 text-right">Actions</div>
       </div>
       
-      {tasks?.map((task) => (
-        <div key={task.id} className="grid grid-cols-12 gap-2 px-4 py-2 text-sm hover:bg-muted/30 items-center">
+      {tasks?.map((task) => {
+        const isRunning = runningTaskId === task.id;
+        return (
+        <div
+          key={task.id}
+          className={cn(
+            "grid grid-cols-12 gap-2 px-4 py-2 text-sm items-center border-l-2 border-l-transparent",
+            isRunning
+              ? "border-l-emerald-500 bg-emerald-50/50 hover:bg-emerald-50/50 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/10"
+              : "hover:bg-muted/30"
+          )}
+        >
           <div className="col-span-4 font-medium">
             <div className="font-medium">{task.name}</div>
             {task.description && (
@@ -143,7 +155,10 @@ const ProjectTaskListComponent = React.forwardRef<HTMLDivElement, ProjectTaskLis
               }
             })()}
           </div>
-          <div className="col-span-2 flex justify-end gap-1">
+          <div className="col-span-2 flex items-center justify-end gap-2">
+            {isRunning ? (
+              <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">Running...</span>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -162,7 +177,8 @@ const ProjectTaskListComponent = React.forwardRef<HTMLDivElement, ProjectTaskLis
             </Button>
           </div>
         </div>
-      ))}
+      );
+      })}
       
       <div className="p-3 border-t">
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
