@@ -33,7 +33,7 @@ export const timeEntriesRepo = {
       .from('time_entries')
       .select('task_id, duration, start_time')
       .in('task_id', ids)
-      .not('end_time', null)
+      .not('end_time', 'is', null)
       .order('start_time', { ascending: false });
     if (error) throw error;
     const result: Record<string, number> = {};

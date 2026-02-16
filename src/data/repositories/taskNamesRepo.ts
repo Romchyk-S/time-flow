@@ -29,13 +29,39 @@ export const taskNamesRepo = {
     return (data ?? []) as TaskName[];
   },
 
+  async ensureExists(projectId: string, name: string): Promise<void> {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const { data: existing, error } = await db
+      .from('task_names')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('name', trimmed)
+      .maybeSingle();
+    if (error) throw error;
+    if (existing) return;
+
+    const { error: insertError } = await db.from('task_names').insert({
+      project_id: projectId,
+      name: trimmed,
+      usage_count: 0,
+      last_used: new Date().toISOString(),
+    });
+    if (insertError) throw insertError;
+  },
+
   async upsert(projectId: string, name: string): Promise<void> {
-    const { data: existing } = await db
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const { data: existing, error: existingError } = await db
       .from('task_names')
       .select('id, usage_count, last_used')
       .eq('project_id', projectId)
-      .eq('name', name)
-      .single();
+      .eq('name', trimmed)
+      .maybeSingle();
+    if (existingError) throw existingError;
 
     if (existing) {
       await db
@@ -50,7 +76,7 @@ export const taskNamesRepo = {
         .from('task_names')
         .insert({
           project_id: projectId,
-          name,
+          name: trimmed,
           usage_count: 1,
           last_used: new Date().toISOString(),
         });

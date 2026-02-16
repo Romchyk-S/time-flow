@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Task, TaskStatus } from '@/types';
+import { taskNamesRepo } from '@/data/repositories/taskNamesRepo';
 
 const db = supabase as any;
 
@@ -65,7 +66,7 @@ export const tasksRepo = {
     total_duration?: number;
   }): Promise<Task> {
     const toInsert = {
-      name: input.name,
+      name: input.name.trim(),
       project_id: input.project_id,
       description: input.description ?? null,
       status: input.status ?? 'not_started',
@@ -81,17 +82,47 @@ export const tasksRepo = {
       .select()
       .single();
     if (error) throw error;
+    await taskNamesRepo.ensureExists(toInsert.project_id, toInsert.name);
     return data as Task;
   },
 
-  async update(id: string, updates: Partial<Omit<Task, 'id' | 'created_at' | 'updated_at'>>): Promise<Task> {
+  async findByNameAndProject(name: string, projectId: string): Promise<Task | null> {
+    const normalized = name.trim();
     const { data, error } = await db
       .from('tasks')
-      .update(updates)
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('name', normalized)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Task) ?? null;
+  },
+
+  async update(id: string, updates: Partial<Omit<Task, 'id' | 'created_at' | 'updated_at'>>): Promise<Task> {
+    const shouldSyncName = typeof (updates as any).name === 'string' || typeof (updates as any).project_id === 'string';
+    const before = shouldSyncName ? await this.getById(id) : null;
+
+    const nextUpdates = { ...updates } as any;
+    if (typeof nextUpdates.name === 'string') {
+      nextUpdates.name = nextUpdates.name.trim();
+    }
+
+    const { data, error } = await db
+      .from('tasks')
+      .update(nextUpdates)
       .eq('id', id)
       .select()
       .single();
     if (error) throw error;
+
+    if (shouldSyncName) {
+      const projectId = (nextUpdates.project_id as string | undefined) ?? before?.project_id;
+      const name = (nextUpdates.name as string | undefined) ?? before?.name;
+      if (projectId && name) {
+        await taskNamesRepo.ensureExists(projectId, name);
+      }
+    }
+
     return data as Task;
   },
 

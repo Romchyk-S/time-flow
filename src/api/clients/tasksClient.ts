@@ -49,8 +49,7 @@ export const tasksClient = {
   },
 
   async findByNameAndProject(name: string, projectId: string): Promise<Task | null> {
-    const tasks = await tasksRepo.getAll();
-    return tasks.find(t => t.name === name.trim() && t.project_id === projectId) ?? null;
+    return tasksRepo.findByNameAndProject(name, projectId);
   },
 
   async getByProject(
