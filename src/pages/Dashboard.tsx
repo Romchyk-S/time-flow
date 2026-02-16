@@ -40,11 +40,6 @@ const Dashboard = () => {
   const selectedProject = projects.find((p) => p.id === projectId);
 
   useEffect(() => {
-    console.log('[Dashboard] autocomplete effect', {
-      projectId,
-      taskNameInput,
-      willFetch: !!projectId,
-    });
     if (projectId) fetchSuggestions(taskNameInput);
   }, [projectId, taskNameInput, fetchSuggestions]);
 
