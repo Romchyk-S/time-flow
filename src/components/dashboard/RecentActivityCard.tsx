@@ -105,7 +105,7 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
               variant="ghost"
               size="sm"
               className="h-8 shrink-0"
-              showIcon={false}
+              showIcon
             >
               Start
             </StartTaskButton>
