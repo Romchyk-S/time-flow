@@ -138,7 +138,7 @@ export function StartTaskButton({
 
       // Start the timer with the updated/created task
       console.log('Starting timer for task:', taskToStart);
-      startTimer(taskToStart.name, project);
+      startTimer(taskToStart);
 
       // Invalidate relevant queries
       console.log('Invalidating queries');
