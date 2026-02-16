@@ -6,6 +6,7 @@ import { Button } from "./button";
 import { Pencil, Trash2, Clock, Calendar, Folder } from "lucide-react";
 import { Badge } from "./badge";
 import { StartTaskButton } from "@/components/tasks/StartTaskButton";
+import { useTimerStore } from "@/state/store/timerStore";
 
 interface HoverEffectProps {
   items: {
@@ -37,6 +38,7 @@ export const HoverEffect = ({
   onTaskClick,
 }: HoverEffectProps) => {
   let [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const runningTaskId = useTimerStore((s) => s.taskId);
 
   // Status color mapping
   const statusColors = {
@@ -86,16 +88,17 @@ export const HoverEffect = ({
               />
             )}
           </AnimatePresence>
-          <Card>
+          <Card className={cn(runningTaskId === item.id && 'border-emerald-500')}>
             <div className="flex flex-col h-full">
               {/* Header with title and status */}
               <div className="flex justify-between items-start mb-2">
                 <CardTitle className="line-clamp-2">{item.title}</CardTitle>
-                <div className="flex space-x-2">
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex space-x-2">
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-6 w-6"
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
@@ -107,7 +110,7 @@ export const HoverEffect = ({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                    className="h-6 w-6 text-red-500 hover:text-red-700"
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
@@ -118,6 +121,7 @@ export const HoverEffect = ({
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
+                  </div>
                 </div>
               </div>
               

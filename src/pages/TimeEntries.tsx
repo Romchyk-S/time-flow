@@ -58,6 +58,85 @@ export default function TimeEntriesPage() {
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
 
+  const renderEntryCard = (input: {
+    id: string;
+    taskName: string;
+    project?: { name: string; color: string };
+    durationMinutes: number;
+    startTime: string;
+    endTime: string | null;
+    isRunning: boolean;
+  }) => {
+    const timeRange = input.endTime
+      ? `${new Date(input.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(input.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : 'Running...';
+
+    return (
+      <div
+        key={input.id}
+        className={cn(
+          'relative group h-full w-full rounded-lg border bg-card p-4',
+          input.isRunning && 'border-emerald-500'
+        )}
+      >
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {input.project ? (
+              <span
+                className="inline-block w-3 h-3 rounded-full border-2 shrink-0"
+                style={{ backgroundColor: input.project.color, borderColor: input.project.color }}
+                title={input.project.name}
+              />
+            ) : null}
+            <span className="font-medium truncate">{input.taskName || 'Unknown task'}</span>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() =>
+                openEditEntryDialog({
+                  id: input.id,
+                  taskName: input.taskName,
+                  projectName: input.project?.name ?? '',
+                  projectColor: input.project?.color ?? '#000000',
+                  startTime: input.startTime,
+                  endTime: input.endTime,
+                })
+              }
+              title="Edit time"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-red-500 hover:text-red-700"
+              onClick={() => {
+                handleDeleteEntry(input.id);
+              }}
+              title="Delete entry"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">Duration</span>
+            <span className="font-mono">{formatDuration(input.durationMinutes)}</span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">Time</span>
+            <span className="font-mono text-xs">{timeRange}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const groups = useMemo(() => {
     if (!groupByProject) return [] as { project: Project; taskCount: number; totalMinutes: number; entries: any[] }[];
 
@@ -298,144 +377,34 @@ export default function TimeEntriesPage() {
               </div>
 
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {g.entries.map((row: any) => {
-                  const timeRange = row.endTime
-                    ? `${new Date(row.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(row.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                    : 'Running...';
-                  const isRunning = runningTaskId === row.taskId;
-
-                  return (
-                    <div
-                      key={row.id}
-                      className="rounded-lg border bg-background p-3"
-                      style={{ borderColor: `${row.projectColor}22` }}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            {isRunning ? (
-                              <span
-                                className="h-2 w-2 rounded-full animate-pulse shrink-0"
-                                style={{ backgroundColor: row.projectColor }}
-                                title="Timer running"
-                              />
-                            ) : null}
-                            <div className="font-medium truncate">{row.taskName || 'Untitled task'}</div>
-                          </div>
-                          <div className="text-xs text-muted-foreground font-mono mt-1">{timeRange}</div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="font-mono text-sm">{formatDuration(row.duration)}</div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() =>
-                              openEditEntryDialog({
-                                id: row.id,
-                                taskName: row.taskName,
-                                projectName: row.projectName,
-                                projectColor: row.projectColor,
-                                startTime: row.startTime,
-                                endTime: row.endTime,
-                              })
-                            }
-                            title="Edit time"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                            onClick={() => handleDeleteEntry(row.id)}
-                            title="Delete entry"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {g.entries.map((row: any) =>
+                  renderEntryCard({
+                    id: row.id,
+                    taskName: row.taskName,
+                    project: { name: row.projectName, color: row.projectColor },
+                    durationMinutes: row.duration,
+                    startTime: row.startTime,
+                    endTime: row.endTime,
+                    isRunning: row.endTime === null,
+                  })
+                )}
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {entries.map((entry) => {
-            const task = entry.task;
-            const proj = task?.project;
-            const isRunning = entry.end_time === null;
-            const timeRange = entry.end_time
-              ? `${new Date(entry.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(entry.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-              : 'Running...';
-            return (
-              <div key={entry.id} className="relative group h-full w-full rounded-lg border bg-card p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    {isRunning ? (
-                      <span
-                        className="h-2 w-2 rounded-full animate-pulse shrink-0"
-                        style={{ backgroundColor: proj?.color ?? '#16a34a' }}
-                        title="Timer running"
-                      />
-                    ) : null}
-                    {proj && (
-                      <span
-                        className="inline-block w-3 h-3 rounded-full border-2"
-                        style={{ backgroundColor: proj.color, borderColor: proj.color }}
-                      />
-                    )}
-                    <span className="font-medium truncate">{task?.name ?? 'Unknown task'}</span>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() =>
-                        openEditEntryDialog({
-                          id: entry.id,
-                          taskName: task?.name ?? '',
-                          projectName: proj?.name ?? '',
-                          projectColor: proj?.color ?? '#000000',
-                          startTime: entry.start_time,
-                          endTime: entry.end_time,
-                        })
-                      }
-                      title="Edit time"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-red-500 hover:text-red-700"
-                      onClick={() => {
-                        handleDeleteEntry(entry.id);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="font-mono">{formatDuration(entry.duration ?? 0)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">Time</span>
-                    <span className="font-mono text-xs">{timeRange}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {entries.map((entry) =>
+            renderEntryCard({
+              id: entry.id,
+              taskName: entry.task?.name ?? '',
+              project: entry.task?.project ? { name: entry.task.project.name, color: entry.task.project.color } : undefined,
+              durationMinutes: entry.duration ?? 0,
+              startTime: entry.start_time,
+              endTime: entry.end_time,
+              isRunning: entry.end_time === null,
+            })
+          )}
         </div>
       )}
 
