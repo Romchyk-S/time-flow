@@ -12,10 +12,15 @@ A modern time tracking web app built with **Vite**, **React**, **TypeScript**, a
 
 ### Tasks
 - **Day navigation**: move one day at a time (no weekend skip) within a 2-week window (current week + next week)
-- **List** time entries for the selected day, **grouped by project** (count + total time per project)
-- **Edit** task name, project, duration (H:MM), and status (not started, in progress, in review, completed)
-- **Running indicator** (green dot) when that task’s timer is active
+- **Task cards** with project + status + total duration
+- **Edit** task fields (name, description, status, project)
+- **Task edit dialog** includes a list of time entries for that task, with an edit popup to adjust start/end times (duration recalculates)
+- **Running indicator** (green border + “Running...”) when that task’s timer is active
 - **Create** and **delete** tasks (with confirmation)
+
+### Time entries
+- Dedicated **Time Entries** page with a day picker and a **Group by project** toggle
+- Edit entries via popup (start/end time) and delete entries (deletes the entry only)
 
 ### Projects
 - **CRUD** for projects
@@ -25,7 +30,8 @@ A modern time tracking web app built with **Vite**, **React**, **TypeScript**, a
 - **Period**: Today, This week, Last week, Last month, or custom date range (calendar)
 - **Summary**: Total time, project count, task count, average daily time
 - **Tables**: Time by project, detailed task list, daily summary
-- **CSV export**: Full report (all sections) or individual sections (summary, by project, detailed tasks, daily)
+- **XLSX export**: Full report as a multi-sheet workbook
+- **CSV export**: Full report (combined) or individual sections (summary, by project, detailed tasks, daily)
 
 ### Settings
 - **Theme**: Light, Dark, or System (follow OS)
@@ -44,6 +50,7 @@ A modern time tracking web app built with **Vite**, **React**, **TypeScript**, a
 | **Dates** | date-fns |
 | **Icons** | Lucide React |
 | **Forms / validation** | React Hook Form, Zod |
+| **Exports** | SheetJS (`xlsx`) |
 
 ## Prerequisites
 
@@ -64,20 +71,33 @@ A modern time tracking web app built with **Vite**, **React**, **TypeScript**, a
    ```
 
 3. **Environment variables**
-   Create a `.env` in the project root (see `.env.example` if present). The app expects Supabase URL and anon key to be set (e.g. in `src/integrations/supabase/client.ts` or via `import.meta.env` if you switch to Vite env).
+   The Supabase client is currently configured in `src/integrations/supabase/client.ts`.
+
+   If you want to run against your own Supabase project, you should provide your Supabase URL and anon key.
+
+   You can either:
+
+   - Update `src/integrations/supabase/client.ts` directly, or
+   - Switch it to Vite env vars (recommended for deployments).
+
+   If you choose env vars, create a `.env` in the project root and set:
    ```
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
-   If the client is still hardcoded, update `src/integrations/supabase/client.ts` with your Supabase URL and anon key.
 
-4. **Run the dev server**
+4. **Apply Supabase migrations**
+   SQL migrations live in `supabase/migrations/`. Apply them to your Supabase project (via Supabase SQL editor, or via Supabase CLI if you use it).
+
+   After applying migrations, if you still see “table/function not found” errors in the app, reload the Supabase schema cache in the dashboard.
+
+5. **Run the dev server**
    ```bash
    npm run dev
    ```
    Open the URL shown in the terminal (e.g. [http://localhost:5173](http://localhost:5173)).
 
-5. **Build for production**
+6. **Build for production**
    ```bash
    npm run build
    ```
@@ -227,6 +247,8 @@ There are indexes on `tasks(project_id)`, `tasks(usage_count, last_used)`, `time
 2. Import the project on [Vercel](https://vercel.com); use the Vite preset.
 3. Add environment variables (Supabase URL and anon key if you use Vite env).
 4. Deploy. The build command is `npm run build`; output directory is `dist`.
+
+This repo includes `vercel.json` configured for SPA routing (so hard-refreshing a route like `/projects` works).
 
 ## Repository
 

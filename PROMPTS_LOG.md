@@ -2682,4 +2682,3 @@ Your README says time_entries.duration is seconds, but you migrated it to minute
 Done
 README doc drift fixed
 Updated README.md so time_entries.duration is correctly documented as minutes (not seconds).
-
