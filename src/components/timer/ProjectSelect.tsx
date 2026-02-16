@@ -27,7 +27,7 @@ export function ProjectSelect({
 }: ProjectSelectProps) {
   return (
     <Select
-      value={value ?? ""}
+      value={value ?? undefined}
       onValueChange={onValueChange}
       disabled={disabled}
     >

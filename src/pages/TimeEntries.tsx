@@ -5,6 +5,7 @@ import { useTimeEntriesForDay } from '@/state/hooks/useTimeEntries';
 import { formatDuration } from '@/state/utils/timeUtils';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
@@ -188,8 +189,8 @@ export default function TimeEntriesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 max-w-7xl space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Time Entries</h2>
           <p className="text-muted-foreground">
@@ -199,7 +200,7 @@ export default function TimeEntriesPage() {
           </p>
           <p className="text-sm text-muted-foreground">Total: {formatDuration(totalMinutesForDay)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <label className="relative inline-flex cursor-pointer items-center gap-3 text-sm">
             <input
               type="checkbox"
@@ -212,28 +213,51 @@ export default function TimeEntriesPage() {
             <span className="dot absolute top-1 left-1 h-5 w-5 rounded-full bg-background border transition-transform duration-200 ease-in-out peer-checked:translate-x-5" />
             <span className="text-muted-foreground select-none">Group by project</span>
           </label>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => navigateDate(-1)}>
+          <div className="flex items-center bg-muted/50 rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigateDate(-1)}
+              className="h-8 w-8 p-0 hover:bg-background"
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
+
             <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <CalendarIcon className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn('h-8 px-3 font-normal', !selectedDate && 'text-muted-foreground')}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {isToday(selectedDate) ? 'Today' : format(selectedDate, 'MMM d, yyyy')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                />
+                <Calendar mode="single" selected={selectedDate} onSelect={handleDateSelect} initialFocus />
               </PopoverContent>
             </Popover>
-            <Button variant="ghost" size="sm" onClick={() => navigateDate(1)}>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigateDate(1)}
+              className="h-8 w-8 p-0 hover:bg-background"
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
+
+            {!isToday(selectedDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDate(new Date())}
+                className="ml-1 h-8 text-sm"
+              >
+                Today
+              </Button>
+            )}
           </div>
         </div>
       </div>

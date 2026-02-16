@@ -21,7 +21,7 @@ const Dashboard = () => {
   const { projects } = useProjects();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [taskNameInput, setTaskNameInput] = useState("");
-  const { suggestions, fetchSuggestions } = useAutocomplete(projectId);
+  const { suggestions, loading: suggestionsLoading, fetchSuggestions } = useAutocomplete(projectId);
   const queryClient = useQueryClient();
   const todayStartStr = todayStart();
   const todayEndStr = dayEnd(new Date());
@@ -159,6 +159,7 @@ const Dashboard = () => {
                   onChange={setTaskNameInput}
                   suggestions={suggestions}
                   onSelectSuggestion={handleSelectSuggestion}
+                  loading={suggestionsLoading}
                   disabled={isRunning}
                   placeholder="What are you working on?"
                 />
