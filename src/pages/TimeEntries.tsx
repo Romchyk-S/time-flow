@@ -75,8 +75,8 @@ export default function TimeEntriesPage() {
       <div
         key={input.id}
         className={cn(
-          'relative group h-full w-full rounded-lg border bg-card p-4',
-          input.isRunning && 'border-emerald-500'
+          'relative group h-full w-full rounded-lg border bg-card p-4 transition-colors hover:shadow-md',
+          input.isRunning ? 'border-emerald-500 hover:border-emerald-500' : 'hover:border-slate-300 dark:hover:border-slate-600'
         )}
       >
         <div className="flex justify-between items-start mb-2">

@@ -88,7 +88,11 @@ export const HoverEffect = ({
               />
             )}
           </AnimatePresence>
-          <Card className={cn(runningTaskId === item.id && 'border-emerald-500')}>
+          <Card
+            className={cn(
+              runningTaskId === item.id && 'border-emerald-500 group-hover:border-emerald-500'
+            )}
+          >
             <div className="flex flex-col h-full">
               {/* Header with title and status */}
               <div className="flex justify-between items-start mb-2">
@@ -179,6 +183,12 @@ export const HoverEffect = ({
                       </div>
                     )}
                   </div>
+
+                  {runningTaskId === item.id ? (
+                    <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
+                      Running...
+                    </div>
+                  ) : null}
 
                   {item.project?.id ? (
                     <div
