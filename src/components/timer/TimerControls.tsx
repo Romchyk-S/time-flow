@@ -8,6 +8,7 @@ export interface TimerControlsProps {
   onStop: () => void;
   disabled?: boolean;
   className?: string;
+  size?: "sm" | "default" | "lg";
 }
 
 export function TimerControls({
@@ -16,30 +17,39 @@ export function TimerControls({
   onStop,
   disabled,
   className,
+  size = "default",
 }: TimerControlsProps) {
+  const iconSize = size === "lg" ? "h-5 w-5" : "h-4 w-4";
+
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {isRunning ? (
         <Button
           type="button"
           variant="destructive"
-          size="sm"
+          size={size === "lg" ? "default" : "sm"}
           onClick={onStop}
           disabled={disabled}
-          className="gap-1.5"
+          className={cn(
+            "gap-1.5 font-semibold shadow-sm",
+            size === "lg" && "px-6 py-2.5 text-base"
+          )}
         >
-          <Square className="h-4 w-4" />
+          <Square className={iconSize} />
           Stop
         </Button>
       ) : (
         <Button
           type="button"
-          size="sm"
+          size={size === "lg" ? "default" : "sm"}
           onClick={onStart}
           disabled={disabled}
-          className="gap-1.5"
+          className={cn(
+            "gap-1.5 font-semibold shadow-sm",
+            size === "lg" && "px-6 py-2.5 text-base"
+          )}
         >
-          <Play className="h-4 w-4" />
+          <Play className={iconSize} />
           Start
         </Button>
       )}

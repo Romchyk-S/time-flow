@@ -29,7 +29,7 @@ import { Project, Task, TaskStatus } from "@/types";
 const taskFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  status: z.enum(["not_started", "in_progress", "paused", "in_review", "completed"]),
+  status: z.enum(["not_started", "in_progress", "paused", "in_review", "completed", "on_hold", "blocked"]),
   project_id: z.string().min(1, "Project is required"),
   work_dates: z.array(z.string()).optional().nullable(),
   selectedDates: z.array(z.date()).optional().default([]),

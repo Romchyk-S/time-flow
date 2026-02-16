@@ -1,9 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TimeEntry } from "@/types";
 
+const db = supabase as any;
+
 export const timeEntriesClient = {
   async getRunning(): Promise<TimeEntry | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .select("*")
       .is("end_time", null)
@@ -15,7 +17,7 @@ export const timeEntriesClient = {
   },
 
   async getByTaskId(taskId: string): Promise<TimeEntry[]> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .select("*")
       .eq("task_id", taskId)
@@ -25,7 +27,7 @@ export const timeEntriesClient = {
   },
 
   async getByDateRange(startDate: string, endDate: string): Promise<TimeEntry[]> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .select("*, task:tasks(id, name, project_id, status, project:projects(id, name, color))")
       .gte("start_time", startDate)
@@ -36,7 +38,7 @@ export const timeEntriesClient = {
   },
 
   async getEntriesForDay(dayStart: string, dayEnd: string): Promise<TimeEntry[]> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .select("*, task:tasks(id, name, project_id, status, project:projects(id, name, color))")
       .gte("start_time", dayStart)
@@ -47,7 +49,7 @@ export const timeEntriesClient = {
   },
 
   async start(taskId: string, notes?: string): Promise<TimeEntry> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .insert({
         task_id: taskId,
@@ -62,7 +64,7 @@ export const timeEntriesClient = {
   },
 
   async stop(id: string, durationSeconds: number): Promise<TimeEntry> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .update({
         end_time: new Date().toISOString(),
@@ -76,7 +78,7 @@ export const timeEntriesClient = {
   },
 
   async update(id: string, updates: Partial<Pick<TimeEntry, "duration" | "notes">>): Promise<TimeEntry> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("time_entries")
       .update(updates)
       .eq("id", id)
@@ -87,7 +89,7 @@ export const timeEntriesClient = {
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from("time_entries").delete().eq("id", id);
+    const { error } = await db.from("time_entries").delete().eq("id", id);
     if (error) throw error;
   },
 };

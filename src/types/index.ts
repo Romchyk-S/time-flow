@@ -9,7 +9,7 @@ export interface Project {
 }
 
 // Task status
-export type TaskStatus = "not_started" | "in_progress" | "paused" | "in_review" | "completed";
+export type TaskStatus = "not_started" | "in_progress" | "paused" | "in_review" | "completed" | "on_hold" | "blocked";
 
 // Task – matches Supabase tasks table (work_dates = dates task is expected / was worked on)
 export interface Task {
