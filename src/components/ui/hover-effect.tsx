@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "./button";
 import { Pencil, Trash2, Clock, Calendar, Folder } from "lucide-react";
 import { Badge } from "./badge";
+import { StartTaskButton } from "@/components/tasks/StartTaskButton";
 
 interface HoverEffectProps {
   items: {
@@ -16,6 +17,7 @@ interface HoverEffectProps {
     lastWorkedDate?: string;
     duration?: string;
     project?: {
+      id?: string;
       name: string;
       color?: string;
       description?: string;
@@ -158,19 +160,44 @@ export const HoverEffect = ({
               
               {/* Footer with metadata */}
               <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  {item.lastWorkedDate && item.lastWorkedDate !== 'Never' && (
-                    <div className="flex items-center">
-                      <Calendar className="h-3.5 w-3.5 mr-1" />
-                      <span>{item.lastWorkedDate}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {item.lastWorkedDate && item.lastWorkedDate !== 'Never' && (
+                      <div className="flex items-center">
+                        <Calendar className="h-3.5 w-3.5 mr-1" />
+                        <span>{item.lastWorkedDate}</span>
+                      </div>
+                    )}
+                    {item.duration && (
+                      <div className="flex items-center">
+                        <Clock className="h-3.5 w-3.5 mr-1" />
+                        <span>{item.duration}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {item.project?.id ? (
+                    <div
+                      className="shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
+                    >
+                      <StartTaskButton
+                        task={{
+                          id: item.id,
+                          name: item.title,
+                          project_id: item.project.id,
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8"
+                      >
+                        Start
+                      </StartTaskButton>
                     </div>
-                  )}
-                  {item.duration && (
-                    <div className="flex items-center">
-                      <Clock className="h-3.5 w-3.5 mr-1" />
-                      <span>{item.duration}</span>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>

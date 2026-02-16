@@ -127,6 +127,7 @@ export function TasksHoverGrid({
       lastWorkedDate,
       duration: durationText,
       project: task.project ? {
+        id: task.project.id,
         name: task.project.name,
         color: task.project.color
       } : undefined
