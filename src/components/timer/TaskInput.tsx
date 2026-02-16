@@ -41,16 +41,31 @@ export function TaskInput({
   const showList = open && (suggestions.length > 0 || loading);
   const displaySuggestions = value.trim() ? suggestions : suggestions.slice(0, 5);
 
+  useEffect(() => {
+    console.debug('[TaskInput] state', {
+      open,
+      value,
+      suggestionsCount: suggestions.length,
+      loading: !!loading,
+      showList,
+      displayCount: displaySuggestions.length,
+    });
+  }, [open, value, suggestions.length, loading, showList, displaySuggestions.length]);
+
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <Input
         data-testid={testId}
         value={value}
         onChange={(e) => {
+          console.debug('[TaskInput] onChange', { value: e.target.value });
           onChange(e.target.value);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          console.debug('[TaskInput] onFocus');
+          setOpen(true);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Escape") setOpen(false);
         }}
@@ -73,6 +88,7 @@ export function TaskInput({
                 className="cursor-pointer px-3 py-2 hover:bg-accent hover:text-accent-foreground"
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  console.debug('[TaskInput] select suggestion', { suggestion: s });
                   onSelectSuggestion(s);
                   setOpen(false);
                 }}
