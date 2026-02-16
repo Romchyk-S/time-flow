@@ -40,7 +40,7 @@ const Dashboard = () => {
   const selectedProject = projects.find((p) => p.id === projectId);
 
   useEffect(() => {
-    console.debug('[Dashboard] autocomplete effect', {
+    console.log('[Dashboard] autocomplete effect', {
       projectId,
       taskNameInput,
       willFetch: !!projectId,
@@ -95,15 +95,11 @@ const Dashboard = () => {
       for (let i = 0; i <= maxDaysBack; i++) {
         dateKeys.push(formatDateKey(subDays(now, i)));
       }
-
-      console.log(`[recent-tasks] querying overlaps for dateKeys[0]=${dateKeys[0]}.. len=${dateKeys.length}`);
       const recent = await tasksClient.getRecentActivity({
         dateKeys,
         limit: minTasks,
         includeCompleted: false,
       });
-
-      console.log(`[recent-tasks] received count=${recent.length}`);
       const latestDurations = await timeEntriesClient.getLatestDurationsByTaskIds(recent.map((t: any) => t.id));
       return (recent as any[]).map((t) => ({
         ...(t as TaskWithProject),

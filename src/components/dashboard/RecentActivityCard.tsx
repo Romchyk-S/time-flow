@@ -16,16 +16,7 @@ interface RecentActivityCardProps {
 export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: RecentActivityCardProps) {
   const latestDurationMinutes = (task as unknown as { latest_duration_minutes?: number | null }).latest_duration_minutes;
 
-  // Log when the component renders with task details
-  console.log(`[RecentActivityCard] Rendering task: ${task.name} (ID: ${task.id})`, {
-    status: task.status,
-    lastUsed: task.last_used,
-    project: task.project?.name
-  });
-
-  // Log when the task is being started
   const handleStartTask = () => {
-    console.log(`[RecentActivityCard] Starting task: ${task.name} (ID: ${task.id})`);
     onStatusUpdate?.();
     onTaskUpdated?.();
   };

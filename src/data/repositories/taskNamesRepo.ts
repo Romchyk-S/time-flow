@@ -11,7 +11,7 @@ export const taskNamesRepo = {
     const limit = options?.limit ?? 10;
     const term = options?.searchTerm?.trim();
 
-    console.debug('[taskNamesRepo.searchByProject] start', {
+    console.log('[taskNamesRepo.searchByProject] start', {
       projectId,
       term,
       limit,
@@ -31,7 +31,7 @@ export const taskNamesRepo = {
 
     const startedAt = performance.now();
     const { data, error } = await q;
-    console.debug('[taskNamesRepo.searchByProject] done', {
+    console.log('[taskNamesRepo.searchByProject] done', {
       projectId,
       term,
       limit,
@@ -47,7 +47,7 @@ export const taskNamesRepo = {
     const trimmed = name.trim();
     if (!trimmed) return;
 
-    console.debug('[taskNamesRepo.upsert] start', { projectId, name: trimmed });
+    console.log('[taskNamesRepo.upsert] start', { projectId, name: trimmed });
 
     const { data: existing, error: existingError } = await db
       .from('task_names')
@@ -66,7 +66,7 @@ export const taskNamesRepo = {
         })
         .eq('id', existing.id);
       if (error) throw error;
-      console.debug('[taskNamesRepo.upsert] updated existing', {
+      console.log('[taskNamesRepo.upsert] updated existing', {
         projectId,
         name: trimmed,
         id: existing.id,
@@ -82,7 +82,7 @@ export const taskNamesRepo = {
           last_used: new Date().toISOString(),
         });
       if (error) throw error;
-      console.debug('[taskNamesRepo.upsert] inserted new', { projectId, name: trimmed });
+      console.log('[taskNamesRepo.upsert] inserted new', { projectId, name: trimmed });
     }
   },
 };

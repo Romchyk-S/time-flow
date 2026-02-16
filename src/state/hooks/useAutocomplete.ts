@@ -9,12 +9,12 @@ export function useAutocomplete(projectId: string | null) {
 
   const fetchSuggestions = useCallback(
     async (searchTerm: string) => {
-      console.debug('[autocomplete] fetchSuggestions called', {
+      console.log('[autocomplete] fetchSuggestions called', {
         projectId,
         searchTerm,
       });
       if (!projectId) {
-        console.debug('[autocomplete] no projectId; clearing suggestions');
+        console.log('[autocomplete] no projectId; clearing suggestions');
         setSuggestions([]);
         return;
       }
@@ -26,7 +26,7 @@ export function useAutocomplete(projectId: string | null) {
           limit: LIMIT,
         });
         const mapped = names.map((tn) => tn.name);
-        console.debug('[autocomplete] suggestions received', {
+        console.log('[autocomplete] suggestions received', {
           projectId,
           searchTerm,
           count: mapped.length,
@@ -35,7 +35,7 @@ export function useAutocomplete(projectId: string | null) {
         });
         setSuggestions(mapped);
       } catch (e) {
-        console.debug('[autocomplete] fetchSuggestions error', e);
+        console.log('[autocomplete] fetchSuggestions error', e);
         throw e;
       } finally {
         setLoading(false);
