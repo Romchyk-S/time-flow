@@ -143,7 +143,15 @@ export const HoverEffect = ({
                   <div className="flex items-center text-xs text-muted-foreground mb-1">
                     <Folder className="h-3.5 w-3.5 mr-1.5" />
                     <span className="font-medium">Project:</span>
-                    <span className="ml-1 truncate">{item.project.name}</span>
+                    <span className="ml-1 flex min-w-0 items-center gap-2">
+                      {item.project.color ? (
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0 border"
+                          style={{ backgroundColor: item.project.color, borderColor: "var(--border)" }}
+                        />
+                      ) : null}
+                      <span className="truncate">{item.project.name}</span>
+                    </span>
                   </div>
                 </div>
               )}

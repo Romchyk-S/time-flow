@@ -26,8 +26,8 @@ export function TimerDisplay({
       <div className={cn("flex items-center gap-2", className)}>
         {isRunning && (
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
           </span>
         )}
         <span className="font-mono text-sm font-semibold tabular-nums tracking-tight">
@@ -42,9 +42,9 @@ export function TimerDisplay({
           <span
             className="text-xs font-medium rounded-full px-2 py-0.5 truncate max-w-[140px]"
             style={{
-              backgroundColor: projectColor ? `${projectColor}20` : "hsl(var(--muted))",
-              color: projectColor || "hsl(var(--muted-foreground))",
-              border: `1px solid ${projectColor ? `${projectColor}40` : "hsl(var(--border))"}`,
+              backgroundColor: projectColor ? `${projectColor}18` : "hsl(var(--muted))",
+              color: "hsl(var(--foreground))",
+              border: `1px solid ${projectColor ? `${projectColor}55` : "hsl(var(--border))"}`,
             }}
             title={projectName}
           >
@@ -61,8 +61,8 @@ export function TimerDisplay({
       <div className="flex items-center gap-3">
         {isRunning && (
           <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
           </span>
         )}
         <span className="font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">
@@ -83,9 +83,9 @@ export function TimerDisplay({
           <span
             className="text-xs font-medium rounded-full px-2.5 py-0.5"
             style={{
-              backgroundColor: projectColor ? `${projectColor}20` : "hsl(var(--muted))",
-              color: projectColor || "hsl(var(--muted-foreground))",
-              border: `1px solid ${projectColor ? `${projectColor}40` : "hsl(var(--border))"}`,
+              backgroundColor: projectColor ? `${projectColor}18` : "hsl(var(--muted))",
+              color: "hsl(var(--foreground))",
+              border: `1px solid ${projectColor ? `${projectColor}55` : "hsl(var(--border))"}`,
             }}
             title={projectName}
           >

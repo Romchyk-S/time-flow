@@ -164,7 +164,7 @@ const Dashboard = () => {
           </div>
 
           {/* Right: Timer display & controls */}
-          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-emerald-500/10 dark:bg-emerald-500/10' : 'bg-muted/30 dark:bg-muted/20'}`}>
+          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-emerald-500/5 dark:bg-emerald-500/10' : 'bg-muted/30 dark:bg-muted/20'}`}>
             {isRunning ? (
               <>
                 <TimerDisplay
