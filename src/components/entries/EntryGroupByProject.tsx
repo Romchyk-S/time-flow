@@ -144,9 +144,9 @@ function EntryRowInline({
 
   const statusIcon =
     row.status === "in_progress" && isRunning ? (
-      <CircleDot className="h-4 w-4 text-green-500 shrink-0 animate-pulse" title="Timer running" />
+      <CircleDot className="h-4 w-4 text-green-500 shrink-0 animate-pulse" />
     ) : row.status === "paused" ? (
-      <Pause className="h-4 w-4 text-muted-foreground shrink-0" title="Paused" />
+      <Pause className="h-4 w-4 text-muted-foreground shrink-0" />
     ) : null;
 
   return (

@@ -129,63 +129,75 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Track time and see your overview.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Timer</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">Project</label>
-              <ProjectSelect
-                projects={projects}
-                value={projectId}
-                onValueChange={setProjectId}
-                placeholder="Select project"
-                disabled={isRunning}
-              />
+      <Card className="overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          {/* Left: Input controls */}
+          <div className="flex-1 p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Timer</h3>
             </div>
-            <div className="flex flex-col gap-1.5 min-w-[200px]">
-              <label className="text-xs text-muted-foreground">Task</label>
-              <TaskInput
-                value={taskNameInput}
-                onChange={setTaskNameInput}
-                suggestions={suggestions}
-                onSelectSuggestion={handleSelectSuggestion}
-                disabled={isRunning}
-                placeholder="Task name..."
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Project</label>
+                <ProjectSelect
+                  projects={projects}
+                  value={projectId}
+                  onValueChange={setProjectId}
+                  placeholder="Select project"
+                  disabled={isRunning}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Task</label>
+                <TaskInput
+                  value={taskNameInput}
+                  onChange={setTaskNameInput}
+                  suggestions={suggestions}
+                  onSelectSuggestion={handleSelectSuggestion}
+                  disabled={isRunning}
+                  placeholder="What are you working on?"
+                />
+              </div>
             </div>
-            <div className="flex items-end gap-2">
-              {isRunning ? (
-                <div className="flex items-center gap-2">
-                  <TimerDisplay
-                    isRunning={true}
-                    elapsedTime={elapsed}
-                    taskName={taskName}
-                    projectName={projectName}
-                    projectColor={projectColor}
-                  />
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={stopTimer}
-                    className="gap-1.5"
-                  >
-                    <Square className="h-4 w-4" />
-                    Stop
-                  </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+
+          {/* Right: Timer display & controls */}
+          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-green-500/5' : 'bg-muted/30'}`}>
+            {isRunning ? (
+              <>
+                <TimerDisplay
+                  isRunning={true}
+                  elapsedTime={elapsed}
+                  taskName={taskName}
+                  projectName={projectName}
+                  projectColor={projectColor}
+                />
+                <Button
+                  variant="destructive"
+                  size="default"
+                  onClick={stopTimer}
+                  className="gap-1.5 font-semibold px-6"
+                >
+                  <Square className="h-4 w-4" />
+                  Stop
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="text-center space-y-1">
+                  <p className="font-mono text-3xl font-bold tabular-nums text-muted-foreground/40">0:00</p>
+                  <p className="text-xs text-muted-foreground">Ready to track</p>
                 </div>
-              ) : (
-                <div className={!selectedProject || !taskNameInput.trim() ? 'opacity-50' : ''}>
+                <div className={!selectedProject || !taskNameInput.trim() ? 'opacity-40 pointer-events-none' : ''}>
                   <StartTaskButton
                     task={{
-                      id: '', // Will be created
+                      id: '',
                       name: taskNameInput.trim(),
                       project_id: selectedProject?.id || '',
                       project: selectedProject ? {
                         ...selectedProject,
-                        // Ensure all required fields are present
                         description: selectedProject.description || '',
                         created_at: selectedProject.created_at || new Date().toISOString(),
                         updated_at: selectedProject.updated_at || new Date().toISOString()
@@ -196,17 +208,16 @@ const Dashboard = () => {
                     }}
                     onTaskUpdate={handleTaskUpdated}
                     variant="default"
-                    size="sm"
-                    className="min-w-[80px]"
+                    size="default"
+                    className="min-w-[100px] gap-1.5 font-semibold px-6"
                   >
                     Start
                   </StartTaskButton>
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </CardContent>
+        </div>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
