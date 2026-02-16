@@ -53,10 +53,31 @@ export const tasksRepo = {
     } : null;
   },
 
-  async create(input: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task> {
+  async create(input: {
+    name: string;
+    project_id: string;
+    description?: string | null;
+    status?: TaskStatus;
+    work_dates?: string[] | null;
+    is_active?: boolean;
+    usage_count?: number;
+    last_used?: string | null;
+    total_duration?: number;
+  }): Promise<Task> {
+    const toInsert = {
+      name: input.name,
+      project_id: input.project_id,
+      description: input.description ?? null,
+      status: input.status ?? 'not_started',
+      work_dates: input.work_dates ?? [],
+      is_active: input.is_active ?? true,
+      usage_count: input.usage_count ?? 0,
+      last_used: input.last_used ?? null,
+      total_duration: input.total_duration ?? 0,
+    };
     const { data, error } = await db
       .from('tasks')
-      .insert(input)
+      .insert(toInsert)
       .select()
       .single();
     if (error) throw error;

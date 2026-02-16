@@ -14,6 +14,11 @@ import { ProjectSelect } from '@/components/timer/ProjectSelect';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { timeEntriesClient } from '@/api/clients/timeEntriesClient';
+import { useQuery } from '@tanstack/react-query';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { formatDuration, minutesToDurationInput, parseDurationToMinutes } from '@/state/utils/timeUtils';
 import {
   Dialog,
   DialogContent,
@@ -65,6 +70,61 @@ export default function TasksPage() {
       setIsRefreshing(false);
     }
   };
+
+  const handleStartEditEntryDuration = (entryId: string, currentMinutes: number) => {
+    setEditingEntryId(entryId);
+    setEditingDurationValue(minutesToDurationInput(currentMinutes));
+  };
+
+  const handleCancelEditEntryDuration = () => {
+    setEditingEntryId(null);
+    setEditingDurationValue('');
+  };
+
+  const handleSaveEntryDuration = async () => {
+    if (!editingEntryId) return;
+    const minutes = parseDurationToMinutes(editingDurationValue);
+    if (minutes < 0) {
+      toast({
+        title: 'Invalid duration',
+        description: 'Enter a valid H:MM duration',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      await timeEntriesClient.update(editingEntryId, { duration: minutes });
+      await taskEntriesQuery.refetch();
+      await refetch();
+      toast({ title: 'Entry duration updated' });
+    } catch (error) {
+      console.error('Failed to update entry duration:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update entry duration',
+        variant: 'destructive',
+      });
+    } finally {
+      handleCancelEditEntryDuration();
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm('Delete this time entry?')) return;
+    try {
+      await timeEntriesClient.delete(entryId);
+      await taskEntriesQuery.refetch();
+      await refetch();
+      toast({ title: 'Entry deleted' });
+    } catch (error) {
+      console.error('Failed to delete entry:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete entry',
+        variant: 'destructive',
+      });
+    }
+  };
   const { data: projects = [] } = useProjects();
 
   // Task form state
@@ -85,6 +145,18 @@ export default function TasksPage() {
     work_dates: [formatDateKey(new Date())],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingDurationValue, setEditingDurationValue] = useState('');
+
+  const taskEntriesQuery = useQuery({
+    queryKey: ['time-entries-by-task', currentTask.id],
+    queryFn: async () => {
+      if (!currentTask.id) return [];
+      return timeEntriesClient.getByTaskId(currentTask.id);
+    },
+    enabled: isTaskDialogOpen && isEditMode && !!currentTask.id,
+  });
 
   // Open create task dialog
   const openCreateDialog = () => {
@@ -390,6 +462,86 @@ export default function TasksPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {isEditMode && currentTask.id ? (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Entries</h3>
+                    <span className="text-xs text-muted-foreground">
+                      {taskEntriesQuery.isLoading
+                        ? 'Loading...'
+                        : `${(taskEntriesQuery.data ?? []).length} ${(taskEntriesQuery.data ?? []).length === 1 ? 'entry' : 'entries'}`}
+                    </span>
+                  </div>
+
+                  {taskEntriesQuery.data && taskEntriesQuery.data.length > 0 ? (
+                    <ScrollArea className="h-48 rounded-md border">
+                      <div className="divide-y">
+                        {taskEntriesQuery.data
+                          .slice()
+                          .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+                          .map((e) => {
+                            const isEditing = editingEntryId === e.id;
+                            const timeRange = e.end_time
+                              ? `${new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(e.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                              : 'Running...';
+                            return (
+                              <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                                <div className="min-w-0">
+                                  <div className="text-xs text-muted-foreground font-mono truncate">{timeRange}</div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {isEditing ? (
+                                    <span className="flex items-center gap-1">
+                                      <input
+                                        type="text"
+                                        className="w-16 rounded border px-1 py-0.5 text-xs font-mono"
+                                        value={editingDurationValue}
+                                        onChange={(ev) => setEditingDurationValue(ev.target.value)}
+                                        onKeyDown={(ev) => {
+                                          if (ev.key === 'Enter') handleSaveEntryDuration();
+                                          if (ev.key === 'Escape') handleCancelEditEntryDuration();
+                                        }}
+                                        autoFocus
+                                      />
+                                      <button type="button" onClick={handleSaveEntryDuration} className="text-primary text-xs">Save</button>
+                                      <button type="button" onClick={handleCancelEditEntryDuration} className="text-muted-foreground text-xs">Cancel</button>
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="font-mono text-xs hover:underline"
+                                      onClick={() => handleStartEditEntryDuration(e.id, e.duration ?? 0)}
+                                    >
+                                      {formatDuration(e.duration ?? 0)}
+                                    </button>
+                                  )}
+
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-destructive"
+                                    onClick={() => handleDeleteEntry(e.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </ScrollArea>
+                  ) : taskEntriesQuery.isLoading ? (
+                    <div className="text-xs text-muted-foreground">Loading entries...</div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No entries for this task yet.</div>
+                  )}
+                </div>
+              </>
+            ) : null}
           </div>
           <DialogFooter>
             {isEditMode && (

@@ -10,7 +10,17 @@ export const tasksClient = {
     return tasksRepo.getById(id);
   },
 
-  async create(input: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task> {
+  async create(input: {
+    name: string;
+    project_id: string;
+    description?: string | null;
+    status?: TaskStatus;
+    work_dates?: string[] | null;
+    is_active?: boolean;
+    usage_count?: number;
+    last_used?: string | null;
+    total_duration?: number;
+  }): Promise<Task> {
     return tasksRepo.create(input);
   },
 
