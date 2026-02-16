@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ExportScope = "full" | "summary" | "breakdown" | "detailed" | "daily";
+export type ExportScope = "full" | "full_csv" | "summary" | "breakdown" | "detailed" | "daily";
 
 export interface ExportButtonProps {
   onExport: (scope: ExportScope) => void;
@@ -21,7 +21,17 @@ export function ExportButton({ onExport, disabled, className }: ExportButtonProp
         className="gap-2"
       >
         <Download className="h-4 w-4" />
-        Export full report (CSV)
+        Export full report (XLSX)
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onExport("full_csv")}
+        disabled={disabled}
+        className="gap-2"
+      >
+        <Download className="h-4 w-4" />
+        Full report (CSV)
       </Button>
       <Button
         variant="ghost"

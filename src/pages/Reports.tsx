@@ -61,13 +61,15 @@ export default function Reports() {
         URL.revokeObjectURL(url);
       } else {
         const csv =
-          scope === "summary"
-            ? exportService.summaryToCsv(summary, periodLabel)
-            : scope === "breakdown"
-              ? exportService.projectBreakdownToCsv(breakdown)
-              : scope === "detailed"
-                ? exportService.detailedTasksToCsv(detailed)
-                : exportService.dailySummaryToCsv(daily);
+          scope === "full_csv"
+            ? exportService.fullReportToCsv(summary, periodLabel, breakdown, detailed, daily)
+            : scope === "summary"
+              ? exportService.summaryToCsv(summary, periodLabel)
+              : scope === "breakdown"
+                ? exportService.projectBreakdownToCsv(breakdown)
+                : scope === "detailed"
+                  ? exportService.detailedTasksToCsv(detailed)
+                  : exportService.dailySummaryToCsv(daily);
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
