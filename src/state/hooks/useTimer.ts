@@ -4,6 +4,7 @@ import { useTimerStore } from "../store/timerStore";
 import { timerService } from "../services/timerService";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
 import { tasksRepo } from '@/data/repositories/tasksRepo';
+import { taskNamesClient } from '@/api/clients/taskNamesClient';
 import { projectsClient } from "@/api/clients/projectsClient";
 import { formatDateKey } from "../utils/dateUtils";
 import type { Project, Task } from "@/types";
@@ -64,6 +65,8 @@ export function useTimer() {
         await tasksRepo.addWorkDate(task.id, formatDateKey(new Date()));
         await tasksRepo.incrementUsage(task.id);
         await tasksRepo.updateLastUsed(task.id);
+
+        await taskNamesClient.upsert(task.project_id, task.name);
 
         const entry = await timeEntriesClient.start(task.id, notes);
         // Populate project name and color for the running timer

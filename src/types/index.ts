@@ -39,6 +39,15 @@ export interface TimeEntry {
   updated_at: string;
 }
 
+// TaskName – matches Supabase task_names table (deduped names per project)
+export interface TaskName {
+  id: string;
+  project_id: string;
+  name: string;
+  usage_count: number;
+  last_used: string;
+}
+
 // Joined / view types
 export interface TaskWithProject extends Task {
   project?: Project;

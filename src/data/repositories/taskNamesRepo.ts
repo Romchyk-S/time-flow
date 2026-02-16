@@ -1,0 +1,64 @@
+import { supabase } from '@/integrations/supabase/client';
+import type { TaskName } from '@/types';
+
+const db = supabase as any;
+
+export const taskNamesRepo = {
+  async searchByProject(
+    projectId: string,
+    options?: { searchTerm?: string; limit?: number }
+  ): Promise<TaskName[]> {
+    const limit = options?.limit ?? 10;
+    const term = options?.searchTerm?.trim();
+
+    let q = db
+      .from('task_names')
+      .select('id, project_id, name, usage_count, last_used')
+      .eq('project_id', projectId)
+      .order('last_used', { ascending: false, nullsFirst: false })
+      .order('usage_count', { ascending: false })
+      .limit(limit);
+
+    if (term) {
+      q = q.ilike('name', `%${term}%`);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []) as TaskName[];
+  },
+
+  async upsert(projectId: string, name: string): Promise<void> {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const { data: existing, error: existingError } = await db
+      .from('task_names')
+      .select('id, usage_count')
+      .eq('project_id', projectId)
+      .eq('name', trimmed)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    if (existing) {
+      const { error } = await db
+        .from('task_names')
+        .update({
+          usage_count: (existing.usage_count ?? 0) + 1,
+          last_used: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await db
+        .from('task_names')
+        .insert({
+          project_id: projectId,
+          name: trimmed,
+          usage_count: 1,
+          last_used: new Date().toISOString(),
+        });
+      if (error) throw error;
+    }
+  },
+};

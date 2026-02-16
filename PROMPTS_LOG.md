@@ -1330,10 +1330,10 @@ The component uses Tailwind CSS classes and follows your project's color scheme.
 Would you like me to help you integrate this into a specific page or make any adjustments to the styling?
 
 
-### [2025-02-15 16:25:47] [Windsurf]
+### [2025-02-15] [Windsurf]
 
 **Prompt:**
-Create this card and use it for Tasks page with all info we display now properly shown and description if available.. Plus ensure we read status from supabase status.
+Create this card and use it for Tasks page with all info we display now properly shown and description if available. Plus ensure we read status from supabase status.
 
 **Changes/Outcome:**
 I've set up the Tasks page with the following features:
@@ -1372,7 +1372,7 @@ The page is already integrated with your Supabase database and uses your existin
 
 Would you like me to make any adjustments to the layout or functionality?
 
-### [2025-02-15 18:32:50] [Windsurf]
+### [2025-02-15] [Windsurf]
 **Prompt:**
 But give each possible status its own color code as well. And display information about the project task is attached to, its description and buttons to edit and delete, all in this card.
 
@@ -1404,6 +1404,1282 @@ Loading states during operations
 Confirmation dialogs for destructive actions
 The task cards now provide a complete overview of each task while maintaining a clean and modern look. The hover effects and interactive elements make it easy to manage tasks directly from the card.
 
-Would you like me to make any adjustments to the styling or functionality?
 
+### [2025-02-15] [Windsurf]
+**Prompt:**
+But for editing tasks we need the same popup as we had before, not its own edit page. And individual task page is also not implemented, so delete all onclick functionality.
+
+**Changes/Outcome:**
+Task Editing:
+Added a unified dialog for both creating and editing tasks
+Included all task fields (name, description, project, status)
+Added proper loading states and error handling
+Task Status:
+Added support for all status types including "in_review"
+Fixed type issues with the TaskStatus type
+Project Selection:
+Fixed the ProjectSelect component to properly receive projects
+Ensured proper type safety
+UI/UX Improvements:
+Added loading states during form submission
+Included success/error toasts for user feedback
+Made the form more user-friendly with proper validation
+Code Quality:
+Fixed TypeScript errors
+Improved type safety
+Cleaned up the code structure
+The task cards now show all relevant information and the edit/delete functionality should work smoothly. The edit form appears as a popup when clicking the edit button on a task card.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+When I Want to delete a task, the confirmation message shows up twice and needs to be clicked twice to delete it. Keep only one.
+
+**Changes/Outcome:**
+I've fixed the duplicate delete confirmation issue by:
+
+Moving the delete confirmation to the parent component (TasksHoverGrid)
+Removing the confirmation from the HoverEffect component
+Ensuring the delete action is handled in one place
+The delete functionality should now work with a single confirmation dialog. When you click the delete button, you'll see one confirmation dialog, and the task will be deleted after confirming.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+For all tasks cards we do not unpack the date properly, so it just shows Invalid Date
+
+**Changes/Outcome:**
+I've fixed the date display issue in the task cards. Here's what I did:
+
+Improved Date Handling:
+Added proper type checking for the last_used date
+Added error handling to prevent "Invalid Date" errors
+Made the date formatting more robust
+Fixed Duration Formatting:
+Ensured the duration is properly converted to a number before formatting
+Added error handling for duration parsing
+The task cards should now display the last worked date correctly, showing a relative time (e.g., "2 days ago") instead of "Invalid Date". If there's no date, it will show "Never".
+
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+We do not fill up the column last_used now. We need to take the last date in the list of work_dates.
+
+**Changes/Outcome:**
+I've made the following improvements to the task cards:
+
+Last Worked Date:
+Now uses the most recent date from work_dates if last_used isn't available
+Sorts work dates in descending order to find the most recent one
+Handles both string and Date object formats
+Shows "Never" if no dates are available
+Duration Formatting:
+Fixed the TypeScript error by properly converting the duration to a string
+Added error handling for duration parsing
+Error Handling:
+Added try-catch blocks to prevent crashes from invalid date formats
+Includes error logging for debugging
+The task cards will now show the last worked date based on the most recent entry in work_dates if last_used isn't available. The date is displayed in a relative format (e.g., "2 days ago") for better readability.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+Okay, but it has to be a YYYY-MM-DD date, not "minutes ago"
+
+**Changes/Outcome:**
+I've updated the date formatting to show the date in YYYY-MM-DD format. The task cards will now display the date in the format "2026-02-15" instead of the relative time format. The date will be shown in the task card's footer, and if there's no valid date, it will show "Never".
+
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+Dashboard Recent Activity has to show the same cards as tasks, but only those that were last worked on today (first 6 of them). Plus add the actual color code by the project on cards. And ensure that the status updates from not started to in progress whenever the start for that task is clicked.
+
+**Changes/Outcome:**
+Recent Activity Cards:
+Shows tasks that were worked on today
+Displays project colors and task status
+Shows the last worked date in YYYY-MM-DD format
+Limited to 6 most recent tasks
+Status Updates:
+Clicking "Start" on a task with "not_started" status updates it to "in_progress"
+The UI reflects status changes immediately
+Status is shown with appropriate color coding
+Project Colors:
+Each card shows the project's color as a dot next to the project name
+Project name is displayed below the task title
+Responsive Design:
+Cards adjust to different screen sizes (1 column on mobile, 2 on tablet, 3 on desktop)
+Clean, modern UI that matches the app's design system
+Loading States:
+Shows loading state while fetching tasks
+Handles empty states gracefully
+The changes are now live in your Dashboard. The Recent Activity section should now show the 6 most recently worked-on tasks, with proper project colors and status indicators. When you click "Start" on a task, its status will update from "not_started" to "in_progress" if needed.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+When I clicked Start, work_dates have updated but the status is still not_started. we need to combine those logics so the updates for them happen together.
+
+**Changes/Outcome:**
+Combined Updates:
+Now updates both the status and work_dates in a single API call
+Only makes the update if there are actual changes to be made
+Work Date Handling:
+Gets today's date in YYYY-MM-DD format
+Checks if today's date is already in work_dates
+If not, adds it to the list
+Status Update:
+Changes status to 'in_progress' if it's currently 'not_started'
+Only updates the status if it needs to be changed
+Efficiency:
+Uses a single API call for both updates
+Only triggers a re-fetch if changes were made
+The task card should now update both the status and work_dates immediately when you click "Start". The changes are atomic, so both updates will happen together.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+But it has to work for Timer section too. We need the buttons there and in RecentAcitivity to be the same component with the same functions.
+
+**Changes/Outcome:**
+I've created a shared TaskActions component and updated both the Dashboard and RecentActivity components to use it. Here's what's been done:
+
+Created TaskActions Component:
+Handles task starting logic in one place
+Updates both status and work_dates atomically
+Provides consistent UI and behavior
+Updated RecentActivityCard:
+Now uses the shared TaskActions component
+Properly propagates update events to parent components
+Enhanced Dashboard:
+Better task update handling with handleTaskUpdated
+Invalidates both recent tasks and today's entries on updates
+Ensures UI stays in sync across components
+Consistent Behavior:
+Same start button behavior everywhere
+Status and work_dates update together
+Proper error handling and loading states
+The task starting functionality is now consistent across the application, and the UI will update correctly when tasks are started. The code is also more maintainable with the shared component.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+On the Projects page color code task statuses the same way as they are on Tasks
+
+**Changes/Outcome:**
+I've updated the ProjectTaskList component to ensure consistent task status color coding across the application. Here's what I did:
+
+Status Badge Styling:
+Added consistent color coding for all task statuses
+Matched the colors from the Tasks page
+Included dark mode support
+Status Colors:
+Not Started: Gray
+In Progress: Blue
+In Review: Purple
+Completed: Green
+Blocked: Red
+On Hold: Yellow
+Code Improvements:
+Used cn utility for conditional class names
+Maintained existing layout and spacing
+Ensured dark mode compatibility
+The task status badges in the Projects page now match the styling from the Tasks page, providing a consistent user experience. The colors are now consistent throughout the application.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+We need to adapt project colors for the theme properly. The green pn the image looks good on dark theme, but not on light. Implement a good conversion for the light theme.
+
+**Changes/Outcome:**
+I've enhanced the color theming with a more sophisticated approach:
+
+Color Utility:
+Created a new colorUtils.ts with improved color handling
+Added proper light/dark mode variants for all statuses
+Used more visually appealing colors (emerald, rose, amber) for better contrast
+Status Badges:
+Updated to use the new color utility
+Better contrast in both light and dark modes
+Consistent styling across the application
+Color Improvements:
+Not Started: Subtle gray
+In Progress: Professional blue
+In Review: Distinct purple
+Completed: Fresh emerald green
+Blocked: Soft rose red
+On Hold: Warm amber
+The colors now look great in both light and dark modes, with proper contrast for accessibility. The implementation is also more maintainable with all color logic in one place.
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+Also when we stop the time total_duration for the task in supabase does not update.
+
+**Changes/Outcome:**
+I've made several improvements to ensure the task's total duration updates correctly in Supabase when stopping the timer:
+
+Fixed Duration Calculation:
+Ensured we always pass an integer value for duration_seconds
+Added a minimum duration of 1 second to prevent zero or negative values
+Properly converted milliseconds to seconds for the database update
+Improved Error Handling:
+Added better error logging
+Ensured errors are properly propagated
+Added input validation
+UI Updates:
+Invalidate relevant queries to refresh the UI after updates
+Ensure the task list and recent activities are updated
+Database Function:
+The increment_task_duration function is correctly set up to update both execution_duration and last_used fields
+The changes should now ensure that:
+
+When you stop the timer, the duration is accurately recorded
+The task's total execution time is properly incremented
+The UI updates to reflect the new duration
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+In supabase I want to store duration in minutes, not seconds.
+
+**Changes/Outcome:**
+I've made several important changes to handle task durations in minutes and added comprehensive logging:
+
+Updated the Database Function:
+Created a new migration 20260215170000_update_duration_to_minutes.sql that updates the increment_task_duration function to store duration in minutes instead of seconds
+Added detailed logging to track duration updates in the database
+Enhanced tasksClient:
+Updated updateExecutionDuration to include detailed logging
+Added better error handling and logging for task duration updates
+Improved useTimer Hook:
+Added comprehensive logging throughout the timer stop process
+Fixed the queryClient initialization
+Added error handling and logging for the timer stop operation
+Updated ProjectTaskList:
+Enhanced duration display to handle both string (ISO 8601) and numeric (minutes) formats
+Added detailed logging to help debug duration display issues
+Improved error handling for duration formatting
+The system will now:
+
+Store durations in minutes in the database
+Convert between different duration formats as needed
+Provide detailed logs to help track down any remaining issues
+
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+Now the Timer section wrongly reports an error even when we start the task well and supabase records are updated.
+
+**Changes/Outcome:**
+I've enhanced the error handling in the useTimer hook to make it more reliable. Here's what's been improved:
+
+Better Error Handling:
+Added comprehensive try-catch blocks
+More detailed error messages
+Proper error state management
+Task Creation:
+Fixed type issues with task creation
+Separated task creation and status update
+Added work_dates during creation
+Logging:
+Added detailed console logs for debugging
+Clear error messages in the UI
+Better error context in logs
+State Management:
+Properly updates the timer store
+Handles errors without breaking the UI
+Maintains consistent state
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+Same problem is for stopping the task.
+
+**Changes/Outcome:**
+I've enhanced the stopTimer function with better error handling and logging. Here are the key improvements:
+
+Better Error Handling:
+Added validation for required data
+Clear error messages with context
+Proper state restoration on failure
+Improved Logging:
+Detailed logs at each step
+Structured error objects
+Timestamp and duration information
+State Management:
+Immediate UI response by clearing running state first
+Proper cleanup on errors
+Automatic state refresh if stopping fails
+Query Invalidation:
+Added invalidation for time-entries-range
+Better cache management
+Parallel invalidation for better performance
+Return Values:
+Returns true on success
+Returns false on failure
+Sets error state for UI feedback
+The timer should now stop reliably and provide clear feedback if something goes wrong. The logs will help diagnose any remaining issues.
+
+
+### [2025-02-15] [Windsurf]
+**Prompt:**
+If there are less than 6 tasks today, we need to log from previous day and so on. Does not make sense to log just 1 day
+
+**Changes/Outcome:**
+This implementation will:
+
+First try to get tasks for the current date
+If there are fewer than 6 tasks, it will look back up to 7 days to find more tasks
+It will avoid duplicate tasks from different days
+It will return the most recently used tasks first
+Each task will have an original_date field indicating which date it came from
+The component using this hook will automatically update when the data is loaded. The tasks will be sorted by most recently used, and you'll always get at least 6 tasks if they exist in the past week.
+
+You can use the original_date field in your UI to indicate when each task was originally worked on if needed.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+On Vercel I get this error when reloading pages that worked before: 404: NOT_FOUND
+Code: NOT_FOUND
+ID: arn1::556dc-1771236424984-966228ab3bb0
+**Changes/Outcome:**
+You’re using BrowserRouter (client-side routing). On a hard refresh of a route like /projects, Vercel tries to fetch a real file at /projects from the server. Since it doesn’t exist, you get:
+
+404: NOT_FOUND
+Fix applied
+I added vercel.json at the repo root with an SPA rewrite so all routes serve your app entry:
+
+vercel.json
+json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+In time_entries table duration also has to be in minutes, now it is in seconds.
+
+**Changes/Outcome:**
+What was wrong
+Your DB migration and types indicate time_entries.duration must be stored in minutes, but the app was still writing seconds / milliseconds into that column:
+
+useTimer.stopTimer() was calling timeEntriesClient.stop(entryId, durationMs) (ms!)
+timeEntriesClient.stop() was writing that value directly into duration
+Fixes applied (minutes everywhere in time_entries)
+1) Persist minutes when stopping a timer
+In useTimer.ts I now compute:
+durationMinutes = ceil(durationMs / 60000)
+And call:
+timeEntriesClient.stop(entryId, durationMinutes)
+2) timeEntriesClient.stop() now stores minutes (not seconds)
+duration: durationMinutes
+3) Keep UI/reporting consistent (they still display “seconds-based” durations)
+A lot of your formatting utilities (formatDurationLong, etc.) expect seconds, so I updated aggregations to convert:
+
+Dashboard totals:
+todaySeconds and weekSeconds now do (durationMinutes * 60)
+Reports (useReports.ts):
+Convert entry duration minutes to seconds for totals and detailed rows:
+totalSeconds += (e.duration * 60)
+durationSeconds: e.duration * 60
+4) Types clarified
+Updated TimeEntry.duration comment to: // Duration in minutes
+
+### [2025-02-16] [Lovable]
+**Prompt:**
+Redesign the Timer and progress info to have a better and more modern look.
+
+**Changes/Outcome:**
+Redesigned the Timer UI and fixed all build errors:
+
+Timer card: Split layout with project/task inputs on the left, large centered timer display on the right with green pulse animation and subtle background when running
+Floating timer: Compact pill-shaped widget with animated pulse, project badge, and inline controls
+Fixed 15+ build errors: Supabase client type casting, TaskStatus type extended with on_hold/blocked, chart.tsx recharts types, import paths, and vitest setup
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+I asked Lovable to design the Timer section better. But now the tasks dropdown is being blocked by other components and the coloring schema is again not theme responsive. Check the codebase for those two problems and fix the errors, keeping other design changes intact.
+
+**Changes/Outcome:**
+Fixed
+1) Task suggestions dropdown being blocked / clipped
+Your redesigned Timer Card had overflow-hidden, and TaskInput renders its suggestions as an absolutely positioned <ul>. That means the list can get clipped or covered by surrounding layout.
+
+I changed the Timer card to allow overflow:
+
+Dashboard.tsx
+Card className="overflow-hidden" -> overflow-visible
+Also wrapped the Task field container with relative to ensure a stable positioning context.
+This should allow the suggestions list (z-50) to render on top correctly.
+
+2) Timer coloring not theme responsive again
+The right-side timer panel was using a tint that wasn’t consistently readable across themes, and project color dots can disappear on light backgrounds.
+
+I updated:
+
+Dashboard.tsx
+Right panel background:
+running: bg-emerald-500/10 dark:bg-emerald-500/10
+idle: bg-muted/30 dark:bg-muted/20
+ProjectSelect.tsx
+Added border + borderColor: var(--border) around the color dot to keep visibility in both light/dark themes.
+What I didn’t change
+I kept the new Timer layout and other Lovable design changes intact—only adjusted overflow/stacking and theme-safe colors.
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+On Tasks page each project also needs its color code shown next to it.
+
+**Changes/Outcome:**
+Added project color indicator on Tasks page
+The Tasks page cards are rendered via TasksHoverGrid → HoverEffect. I updated src/components/ui/hover-effect.tsx so each task’s Project: row now includes:
+
+a small colored dot using project.color
+a theme-safe border (borderColor: var(--border)) so it stays visible in both light and dark themes
+Where it was changed
+src/components/ui/hover-effect.tsx
+In the “Project info” block, next to the project name.
+Status
+Done: Project color indicator is now shown on each task card in the Tasks page grid.
+Remaining: If you still want the timer’s running background/pill to look better in dark mode, tell me whether it’s the right-side panel tint or the floating timer pill that’s still off, and I’ll tune those tokens next.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+I think we update the duration for tasks wrong, this task was just launched for 3 minutes, but the count only went up from 1 to 2, instead of 1 to 4.
+id,name,description,project_id,is_active,usage_count,last_used,created_at,updated_at,status,work_dates,total_duration
+6051232d-8d36-4edc-a280-43c5a1747c98,Test timer design,,9ae0c25c-850d-4c74-ada7-192244faed52,true,2,2026-02-16 10:43:12.317317+00,2026-02-16 10:19:47.75059+00,2026-02-16 10:46:28.856558+00,in_progress,"[""2026-02-16""]",2
+
+**Changes/Outcome:**
+Root cause (why ~3 mins only added +1)
+timerService.calculateDuration(startTime) returns seconds (it delegates to elapsedSince, which is seconds). But useTimer.stopTimer() was treating that value as milliseconds and dividing by 1000 / 60000 again, which collapses almost everything to ~0, then gets clamped/rounded up to 1 minute.
+
+So a real ~180s session became:
+
+durationMs (actually seconds) ≈ 180
+durationSeconds = floor(180/1000) → 0 → clamped to 1
+durationMinutes = ceil(180/60000) → 1
+Exactly what you observed.
+
+Fix applied
+In src/state/hooks/useTimer.ts:
+
+durationSeconds is now computed directly from the service result (seconds)
+durationMinutes is derived as ceil(durationSeconds / 60)
+Logging updated to reflect the correct units
+This makes:
+
+time_entries.duration store correct minutes
+tasks.total_duration (minutes) increment correctly via increment_task_duration(duration_seconds)
+What you should see now
+If you run a task for ~3 minutes and stop:
+
+time_entries.duration should be 3
+tasks.total_duration should increase by 3 (assuming no other sessions overlap)
+Status
+Completed: fixed incorrect unit conversion causing under-counted task duration updates.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+On Recent Activity I also want the latest run time visible (we can get it from time_entries table by task id). And  ensure no status chips get two lines, like "In Progress" on this screenshot, they always need to be in one line.
+
+**Changes/Outcome:**
+Recent Activity updates done
+1) Show “Latest run” duration per task
+I added a batch fetch from time_entries for the tasks shown in Recent Activity and display it on each card:
+
+timeEntriesClient.getLatestDurationsByTaskIds(taskIds)
+Fetches the most recent completed entry per task (end_time is not null)
+Returns a map: { [taskId]: durationMinutes }
+Dashboard.tsx
+After tasksClient.getRecentActivity(...), it fetches latest durations and attaches latest_duration_minutes onto each task object.
+RecentActivityCard.tsx
+Displays:
+Latest run: {formatDurationLong(latestDurationMinutes * 60)}
+(We multiply by 60 because your formatter expects seconds while entries store minutes.)
+2) Status chips never wrap to 2 lines
+In RecentActivityCard.tsx, I updated the Badge class to include:
+
+whitespace-nowrap
+So “In Progress” will stay on one line.
+
+Status
+Completed: Latest run time shown on Recent Activity cards
+Completed: Status badges forced to a single line
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+And no status chips need any hover effects on them on any of the pages
+
+**Changes/Outcome:**
+Global fix applied: no hover effects on Badge anywhere
+I made this true across the whole project by updating the shared Badge component:
+
+File: src/components/ui/badge.tsx
+Changes:
+Removed transition-colors from the base badge styles
+Removed hover:bg-* from default, secondary, and destructive variants
+This means any status chip implemented with <Badge> will no longer visually react on hover across all pages.
+
+Verification note
+I also did a quick scan for hover:bg-* tied to badges/status chips and didn’t find other obvious badge-hover styling that would override this.
+
+Status
+Completed: Badge hover effects removed globally across the app.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+When the task is started using Timer section the big section on the right needs to clearly show
+Task:
+Name
+Project:
+Name in color code
+
+Now it is
+Task Name Project Name in color code (which looks really hard to see because greens blend in with one another, so we need to change the color responsiveness again).
+
+Next we need to make the top right info section collapsible, so it shows minimal information (time elapsed, task name and Stop Button), but on hover opens  fully to show 
+Time elapsed
+Task:
+Name
+Project:
+Name in color code
+Stop button
+
+Since Open button does not even do anything we can safely delete it too.
+
+**Changes/Outcome:**
+Implemented
+1) Dashboard right-side timer panel (running state)
+Now shows separate labeled lines:
+Task: name
+Project: name with project color dot + bordered pill
+Removed the green-tinted background to avoid green-on-green. It now uses a neutral bg-muted tint for better contrast.
+Fixed the JSX syntax error that broke the file (title={...}" typo).
+2) Floating top-right timer = collapsible + remove “Open”
+Removed the non-functional Open link.
+Made it compact by default (elapsed + task name + Stop).
+On hover, it expands to show:
+elapsed
+Task: name
+Project: name with color dot + bordered pill
+Stop button
+Status
+Done: right panel labeled Task/Project + improved contrast
+Done: floating timer collapsible + Open removed
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Start Buttons in Recent Activity are not aligned between cards. And we do not need Latest Run:, but just show the clock icon like on Today's Tasks
+
+**Changes/Outcome:**
+Recent Activity: Start alignment + “Latest run” display
+1) Start buttons aligned
+I updated RecentActivityCard so the footer is a single consistent row:
+
+Left side: metadata (date + duration)
+Right side: Start button with shrink-0
+This prevents the Start button from jumping around between cards depending on content height.
+
+2) Remove “Latest run:” text, show clock icon + duration
+Instead of rendering a separate “Latest run: …” line, it now shows:
+
+Calendar icon + date
+Clock icon + latest duration (formatted)
+This matches the “Today’s Tasks” style.
+
+File changed
+src/components/dashboard/RecentActivityCard.tsx
+Status
+Completed: Start buttons aligned
+Completed: Latest run label removed; replaced by clock icon + duration
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+And add the usual start triangle icon to Recent Activity cards
+
+**Changes/Outcome:**
+Done: Start triangle icon on Recent Activity
+I re-enabled the usual play/triangle icon on the Recent Activity Start button by switching StartTaskButton from showIcon={false} to showIcon.
+
+File: src/components/dashboard/RecentActivityCard.tsx
+Change: showIcon is now enabled
+Status
+Completed: Recent Activity Start buttons now include the play icon.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+And add start button to the Today's Tasks
+
+**Changes/Outcome:**
+Added Start to “Today’s Tasks” cards
+I implemented the Start button on the same task cards used on the Tasks page (“Today’s Tasks”) by updating the shared card renderer (HoverEffect) that TasksHoverGrid uses.
+
+What changed
+src/components/tasks/TasksHoverGrid.tsx
+The mapped project object now includes id so we can pass project_id into the start action reliably.
+src/components/ui/hover-effect.tsx
+Added a right-aligned StartTaskButton in the footer row (next to the date/duration metadata).
+Wrapped it in a <div> that stops click propagation so clicking Start doesn’t trigger the card click handler.
+The Start button uses StartTaskButton (so it includes the play icon by default and starts the timer the same way as Recent Activity).
+
+Status
+Completed: “Today’s Tasks” cards now include a working Start button with the play icon.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Analyse requirements to ensure nothing was missed: 
+[List of requirements]
+
+**Changes/Outcome:**
+[Analysis of Requirements]
+
+### [2025-02-15 18:32:50] [Windsurf]
+**Prompt:**
+Let's just create a new page for Time Entries:
+B) Ensure Tasks page meets “daily entries list” requirement
+If the evaluator expects the Tasks page to show time entries (not tasks), you may need to:
+
+Render entries for the selected day
+Allow editing entry duration (H:MM), task name, project, delete
+Group entries by project with totals
+
+This seems to work, but we do not have the edit duration logic yet, implement it for Time Entries page and popup for tasks:
+A) Confirm duration correctness end-to-end (minutes storage)
+Even after fixes, you reported incorrect 1-minute durations. The most sensitive areas are:
+
+useTimer.stopTimer duration calculation vs DB timestamps
+Manual entry duration edit path
+Reports/export totals conversion (minutes ↔ seconds)
+
+Do this as well:
+C) Export format expectation
+If they truly want “multiple sheets”, switch “Full export” to XLSX.
+
+This also has to be created:
+1) Gap
+No explicit TaskName entity. Autocomplete is derived from tasks.
+2) Gap
+There’s no separate backend “repository/ORM” layer in the traditional sense because Supabase client is used directly in API clients. This is acceptable for many apps, but if the spec expects an explicit repository/ORM layer, you’d need a data/ module wrapping Supabase operations more strictly.
+3) Change all durations into HH:MM format. Now in DB we keep it as only minutes, will need to apply conversion from it on the layer we have designed for it.
+
+**Changes/Outcome:**
+Plan file created
+I wrote the plan to:
+
+C:\Users\user.windsurf\plans\time-entries-duration-xlsx-architecture-f51feb.md
+
+One important blocker I hit
+Your guidance said “the plan directory will always exist”, but the tooling reported it did not exist when I tried to search it. I still successfully created the plan file directly at the path above, so we’re unblocked.
+
+Decisions I need from you (so I can finalize the plan before implementation)
+Delete button on Time Entries page
+Should it delete the time entry only, or delete the task (and cascade)?
+Task popup “edit duration” meaning
+When editing duration from the Tasks page dialog, do you want to edit:
+The sum of that task’s entries for the selected day, or
+A specific entry (e.g., latest), or
+Show a list of entries inside the dialog and edit one?
+“HH:MM everywhere” strictness
+Should compact displays (Dashboard stats, badges) also be strictly H:MM, or can they stay long-form (1h 20m) while inputs/entries stay H:MM?
+Evaluator strictness
+Are TaskName entity + repository layer mandatory for grading, or “nice-to-have”?
+Todo status
+In progress: draft plan for Time Entries page and edits
+Pending: duration correctness, XLSX export, TaskName entity, repository layer
+Once you answer the 4 questions (brief answers are fine), I’ll update the plan accordingly and then switch to implementation mode.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Delete button on Time Entries page
+Should it delete the time entry only, or delete the task (and cascade)?
+
+Just time entry.
+
+When editing duration from the Tasks page dialog, do you want to edit:
+Show a list of entries inside the dialog and edit one?
+
+“HH:MM everywhere” strictness
+Should compact displays (Dashboard stats, badges) also be strictly H:MM, or can they stay long-form (1h 20m) while inputs/entries stay H:MM?
+Let's do HH:MM everywhere
+
+Are TaskName entity + repository layer mandatory for grading, or “nice-to-have”?
+I believe they are mandatory
+
+Plus ensure that we have the same style hover cards as on tasks page for Time Entries
+
+**Changes/Outcome:**
+Plan updated (with your decisions)
+I updated the plan file at:
+
+C:\Users\user.windsurf\plans\time-entries-duration-xlsx-architecture-f51feb.md
+
+It now reflects:
+
+Delete on Time Entries page = delete time entry only
+Tasks dialog shows a list of entries for the selected day and edits a selected entry
+HH:MM everywhere
+TaskName entity + repository/data layer are mandatory
+Time Entries page should use the same hover-card style building blocks as Tasks (based on HoverEffect / TasksHoverGrid pattern)
+One last quick clarification (to avoid rework)
+For the new Time Entries page, do you want the primary layout to be:
+
+A) A hover-card grid of entries (Tasks-like) with an optional “Grouped by project” header sections, or
+B) A grouped list by project (like EntryGroupByProject) and within each group use hover-cards for entries?
+Reply with A or B, then confirm: “Plan approved, start implementation.”
+
+Once you approve, I’ll switch to implementation mode (exitplanmode) and start coding.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Let us add a toggle to group by projects or no.
+
+**Changes/Outcome:**
+Plan updated (toggle added)
+I updated the plan file to include a “Group by project” on/off toggle on the new Time Entries page:
+
+C:\Users\user.windsurf\plans\time-entries-duration-xlsx-architecture-f51feb.md
+
+Toggle ON: entries grouped under project headers + project totals
+Toggle OFF: flat hover-card grid (Tasks-like)
+Ready to start implementation
+If you’re happy with the plan as written now, reply with:
+
+“Plan approved, start implementation.”
+
+Then I’ll switch to implementation mode (exitplanmode) and begin coding.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Began implementing time-entries-duration-xlsx-architecture-f51feb.md
+
+**Changes/Outcome:**
+[Got some errors midway and stuck in a loop]
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+I need to finish implementing a plan. Find it in C: Users\user\.windsurf\plans and continue where it was stopped.
+
+**Changes/Outcome:**
+What I found + where the plan stopped
+The plan you opened (time-entries-duration-xlsx-architecture-f51feb.md) is the only plan in C:\Users\user.windsurf\plans.
+The repo is midway through Milestone 1:
+Minutes-based timeUtils already exists.
+TimeEntries page already exists.
+XLSX export already exists, but duration unit formatting was inconsistent in several places.
+There was also a critical build-breaker: src/api/clients/tasksClient.ts contained a repo-based client plus a huge chunk of leftover legacy code after it.
+What I implemented (continuing the plan)
+1) Fixed tasksClient.ts (build-breaker)
+Removed the stray legacy code so tasksClient.ts is a single clean repo-based client again.
+2) Restored tasksClient.getRecentActivity() (Dashboard depended on it)
+Added tasksRepo.getRecentActivity() using Supabase:
+overlaps on work_dates
+optional includeCompleted
+ordered by last_used
+limited
+Exposed it via tasksClient.getRecentActivity() so Dashboard.tsx compiles again.
+3) Duration correctness / HH:MM everywhere (Milestone 1)
+Timer displays (seconds) now use:
+formatDurationSeconds(...) (for live timer elapsed)
+Report/dashboard summaries (seconds) now use:
+formatDurationLongSeconds(...)
+Minutes-based displays now consistently show H:MM:
+Updated formatDurationLongMinutes() to return H:MM (per plan “HH:MM everywhere” invariant)
+Fixed Recent Activity latest duration:
+It’s stored as minutes, so it now formats as minutes directly (no * 60 conversion).
+Current status
+Milestone 1 is effectively implemented, but I haven’t run a local typecheck/build yet to confirm there are no remaining TS errors.
+What I need from you (quick verification)
+Run one of these and paste the output if anything fails:
+
+npm run build
+or npm run typecheck (if your package.json has it)
+or npm run lint
+Next milestone to continue
+Once the build is clean, we can move to Milestone 2:
+
+polishing/finishing the Time Entries page behavior (grouping, inline edits, delete time entry only) and aligning it with the Tasks hover-card UI patterns.
+Task completion status
+Completed: plan discovery + picked next milestone, fixed tasksClient.ts corruption, fixed major duration unit mismatches, restored getRecentActivity.
+In progress: Milestone 1 final verification via build/typecheck.
+Next: Milestone 2 (Time Entries page UX + inline edit/delete entry).
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Start Milestone 2
+
+**Changes/Outcome:**
+Milestone 2 started: Time Entries page behavior aligned
+I focused first on the core invariant for Milestone 2: deleting in Time Entries must delete the time entry only, not the task, and the grouped view must use the correct callbacks/types.
+
+Changes made
+1) EntryGroupByProject now deletes entry, not task
+Replaced the old onDeleteTask(taskId) with onDeleteEntry(entryId)
+The “Delete” button now calls onDeleteEntry(row.id) (time entry id)
+2) TimeEntries.tsx now wires grouped delete correctly
+Removed the “delete task” handler and replaced with handleDeleteEntry(entryId)
+Grouped view passes onDeleteEntry={handleDeleteEntry}
+3) Fixed TaskStatus typing so TS doesn’t complain
+handleEditStatus is now (taskId, status: TaskStatus)
+EntryGroupByProject props/types are now consistently TaskStatus (not string)
+What’s next in Milestone 2 (still in progress)
+Ungrouped view currently uses prompt-based duration edit + delete icon; we can convert it to the same inline-edit UX (no prompts) and match the Tasks hover-card style better.
+Verify grouped totals + task counts match expectations (they currently do basic totals).
+Quick check I need from you
+Please run:
+
+npm run build
+If you get TS/lint errors related to the prop signature changes (possible in any other callsites of EntryGroupByProject), paste the output and I’ll patch them immediately.
+
+Status: Milestone 2 is in progress (grouped delete + typings done).
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+All good, continue.
+
+**Changes/Outcome:**
+Milestone 2 continued
+What I changed
+Grouped view
+Project header task count is now unique tasks (via Set(task_id)), not “number of entries”.
+Running indicator is now wired correctly by passing runningTaskId into EntryGroupByProject.
+Ungrouped view
+Removed the prompt-based duration edit.
+Added inline edits consistent with the grouped view:
+Task name (onBlur update)
+Project select
+Status select
+Duration inline H:MM edit using the same shared editingEntryId / editingDurationValue
+Delete still deletes time entry only.
+Quick sanity check to run
+Please run:
+
+npm run build
+If you get any TypeScript errors, paste them (likely candidates: missing projects option when project_id is empty, or status typing in the ungrouped select).
+
+Status
+Milestone 2: still in progress, but now the page has the required inline-edit/delete-entry-only behavior in both grouped and ungrouped modes.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+All good, continue.
+
+**Changes/Outcome:**
+Milestone 2 complete
+What I finished
+Time Entries page is fully wired
+Route exists: /time-entries in App.tsx
+Sidebar nav item exists: “Time Entries” in AppSidebar.tsx
+Delete is correct everywhere
+Grouped view uses onDeleteEntry(entryId) (deletes time entry, not task)
+Ungrouped view also uses the same handleDeleteEntry() (toast + refetch)
+Inline edits work in both grouped + ungrouped
+Task name (on blur)
+Project select
+Status select (TaskStatus typed end-to-end)
+Duration H:MM inline editor (shared edit state)
+Grouping header correctness
+Project header shows unique task count (not entry count)
+Project header shows total time (minutes → H:MM)
+Small polish
+Added header Total for day
+Removed unused Pencil import
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Start Milestone 3
+
+**Changes/Outcome:**
+Milestone 3 progress update
+Fixed the TypeScript error
+That TS error happened because tasksClient.create() was typed as requiring a full Omit<Task,...> payload (including is_active, usage_count, last_used, total_duration), but your UI only sends the minimal create fields.
+
+I fixed this by:
+
+Updating tasksRepo.create() to accept a proper create payload (minimal fields + optional overrides) and fill defaults before inserting.
+Updating tasksClient.create() to match that payload type.
+This also makes other callsites like StartTaskButton and ProjectTaskList type-safe.
+
+Milestone 3 feature status (Tasks dialog “Entries” section)
+The Entries section in src/pages/Tasks.tsx is already implemented:
+Fetches entries via timeEntriesClient.getByTaskId(currentTask.id) when the dialog is open in edit mode
+Shows a scrollable list (ScrollArea)
+Inline duration editing using H:MM with Save/Cancel
+Delete entry button (deletes time entry only)
+Refetches both:
+taskEntriesQuery
+the tasks list for the selected day (refetch())
+Next step to finish Milestone 3
+Please run:
+
+npm run build
+If it’s clean, I’ll mark Milestone 3 completed and we can proceed to Milestone 4 (multi-sheet XLSX export UX / wiring) or start Milestone 5-6 refactor.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Change pages order to Dashboard -> Projects -> Tasks -> Time Entries -> Reports -> Settings. Ensure nav sidebar appears even when I split the screen. Then even when grouped by project time entries need to be as cards, with adapted project color, now green looks horrible on light theme. And we do not need to edit project or status there, this is not tasks page to require this functionality. Instead we need edit button to open a popup where we can edit start time and end time of the time entry, which will edit the duration automatically as well.
+
+**Changes/Outcome:**
+Done: navigation order + sidebar in split-screen + Time Entries redesign
+Sidebar navigation order
+Updated AppSidebar.tsx nav order to:
+
+Dashboard
+Projects
+Tasks
+Time Entries
+Reports
+Settings
+Sidebar visible in split-screen / narrow windows
+You had two separate issues:
+
+useIsMobile() treated <768px as “mobile” (sheet sidebar)
+Even when not mobile, the sidebar component was Tailwind-hidden until md, so it disappeared in the ~640–767px range
+Fixes applied:
+
+Lowered mobile breakpoint to 640px in use-mobile.tsx
+Removed the md:-gated hidden / md:flex / md:block classes in Sidebar desktop branch (components/ui/sidebar.tsx)
+Result: the sidebar stays rendered/usable on split-screen widths, and only switches to the mobile sheet under 640px.
+
+Time Entries page updates (matching your request)
+Grouped-by-project is now cards (not rows)
+In TimeEntries.tsx:
+
+Group containers remain per-project, but each entry is rendered as a card.
+Styling uses subtle border tints derived from project color (${color}22, ${color}33) instead of heavy backgrounds (so green won’t look like a neon block on light theme).
+Removed “Tasks page” controls
+Removed project/status editing entirely from Time Entries (both grouped and ungrouped).
+Time Entries is now focused on time data, not task management.
+New Edit popup: start/end time → duration auto recompute
+Added an Edit button (Pencil) per time entry that opens a dialog:
+
+Edit Start (HH:MM)
+Edit End (HH:MM)
+On save:
+recompute durationMinutes = (end-start)/60000
+persist start_time, end_time, and duration
+Also:
+
+If the entry is currently running (end_time === null), the dialog pre-fills end with current time so you can quickly “close” it.
+To support this, I updated:
+
+timeEntriesRepo.update(...) and timeEntriesClient.update(...) to allow updating start_time and end_time in addition to duration.
+Running indicator color
+The “running” dot is no longer hardcoded green:
+
+Uses the project color where available (better on light theme).
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Also make Group by project a proper toggle. Here is a good 21st dev example:
+npx shadcn@latest add https://21st.dev/r/prebuiltui/toggle-switch
+
+[component code]
+
+**Changes/Outcome:**
+Group-by-project toggle added
+I replaced the old “Ungroup / Group by project” button with a proper toggle switch (checkbox + animated thumb) styled like your 21st.dev example and wired to the existing groupByProject state in TimeEntries.tsx.
+
+What changed
+Toggle behavior
+Checked = grouped by project
+Unchecked = ungrouped (flat cards)
+Accessibility
+Uses a real <input type="checkbox">
+Includes aria-label="Group by project"
+Status
+Completed
+Sidebar order + split-screen sidebar visibility
+Grouped entries as cards + improved color styling
+Removed project/status editing from Time Entries
+Edit popup for start/end time with auto duration recompute
+Group-by-project proper toggle
+If you want, the next cleanup I’d do is remove the now-unused formatDateDisplay helper in TimeEntries.tsx (it’s currently not used), but I didn’t touch it to keep changes minimal.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Yes, do it.
+
+**Changes/Outcome:**
+Done
+Removed the unused formatDateDisplay helper from src/pages/TimeEntries.tsx, so you won’t get lint/TS “declared but never used” warnings.
+Next (your call)
+The only remaining in-progress item on the todo list is Milestone 3 (Tasks dialog entries section). If you want, I can:
+
+Mark Milestone 3 complete (if it’s working as expected), or
+Do a quick pass to ensure it matches the updated Time Entries UX (e.g. add the same start/end edit popup there too, instead of duration-only).
+Tell me which direction you want:
+
+A) Keep Tasks dialog entries as duration-only edit (current)
+B) Add start/end edit popup in Tasks dialog entries too
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+B) Add start/end edit popup in Tasks dialog entries too
+
+**Changes/Outcome:**
+Added start/end edit popup to Tasks dialog entries (Option B)
+Updated src/pages/Tasks.tsx so the Task Edit dialog’s Entries section now matches the Time Entries UX:
+
+Edit button (Pencil) per entry
+Opens a popup to edit:
+Start (HH:MM)
+End (HH:MM, prefilled with “now” if the entry is running)
+On save:
+Updates start_time + end_time
+Recomputes and saves duration automatically
+Delete entry unchanged (still deletes only the time entry)
+Removed the old inline duration editing logic/state since it’s no longer needed.
+What to verify
+Open a task in Edit mode
+In Entries, click the pencil icon
+Change times and Save
+Confirm the duration updates and the list refreshes
+Status
+Milestone 3 completed
+Remaining milestones:
+Milestone 4 (XLSX export UX + multi-sheet report polish)
+Milestone 5-6 (TaskName entity + deeper repo/data refactor
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+On each task edit popup time entries need to show dates properly as well, not just times.
+
+**Changes/Outcome:**
+Updated: task edit dialog entries now show dates too
+In src/pages/Tasks.tsx, the Entries list now renders the time range with the entry date included:
+
+Completed entry:
+YYYY-MM-DD HH:MM - HH:MM
+Running entry:
+YYYY-MM-DD HH:MM - Running...
+This keeps the list readable and makes it clear which day each entry belongs to.
+
+Status
+Completed: “Tasks dialog entries: show date along with time range”.
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Let us do Milestone 4
+
+**Changes/Outcome:**
+Milestone 4 completed (Reports XLSX export UX)
+What I changed
+ExportButton now correctly labels the full export as XLSX
+The “full report” action was already generating an .xlsx, but the button said “(CSV)”.
+Updated label to: Export full report (XLSX).
+Added a separate “Full report (CSV)” option
+Introduced a new export scope: full_csv.
+This uses exportService.fullReportToCsv(...) (the combined multi-section CSV text export).
+Updated Reports.tsx export handler
+scope === "full" downloads multi-sheet XLSX (fullReportToXlsxBlob).
+scope === "full_csv" downloads the combined CSV.
+Other scopes still download their single CSVs.
+Files updated
+src/components/reports/ExportButton.tsx
+src/pages/Reports.tsx
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Yes, let us do it.
+
+**Changes/Outcome:**
+Next step is to verify Milestone 5–6 changes compile and behave correctly.
+
+What I just fixed
+Hardened taskNamesRepo.upsert() to:
+Trim names
+Use maybeSingle() + explicit error handling (avoids “no rows” errors)
+Prevent whitespace duplicates
+Please run
+npm run build
+If it fails, paste the first TypeScript error block.
+
+What I’ll do after a clean build
+Remove any now-redundant taskNamesRepo sync calls in useTimer (since we now:
+ensureExists on task create/rename
+upsert on actual “start timer” usage)
+Mark Milestone 5–6 complete.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Time Entries page needs to have the same calendar design as the Tasks page has.
+
+**Changes/Outcome:**
+Done: Time Entries calendar now matches Tasks
+I updated src/pages/TimeEntries.tsx to use the same date navigator layout as Tasks:
+
+Muted rounded container (bg-muted/50 rounded-lg p-1)
+Left / right arrows with the same sizing/hover behavior
+Calendar popover trigger that shows:
+Today when on today
+otherwise MMM d, yyyy
+Extra “Today” button appears only when you’re not on today
+Header/container spacing aligned to Tasks (container mx-auto p-4 max-w-7xl)
+What to check
+On Time Entries, the top-right calendar control should now look and behave identical to Tasks.
+Verify the group toggle + date navigator still fit on small widths (they now stack like Tasks).
+Status
+Time Entries calendar UI parity: completed
+Remaining work: Milestone 5–6 build verification + remove redundant taskNamesRepo usage in useTimer (still pending)
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Ensure the column tasks.total_duration on each stop is filled up as sum of all related entries. Same if any entry is deleted, we need to catch it and recalculate. Either through UI here or through supabase directly if possible.
+
+**Changes/Outcome:**
+tasks.total_duration will be authoritative sum of time_entries
+I added a DB-side recalculation mechanism (so it works even if entries are edited/deleted outside the UI):
+
+New migration created:
+supabase/migrations/20260216000100_recalculate_tasks_total_duration_from_time_entries.sql
+It adds:
+
+public.recalculate_task_total_duration(task_id uuid)
+trigger on public.time_entries for INSERT/UPDATE/DELETE to recalc the affected task(s)
+sums time_entries.duration in minutes, filtering end_time IS NOT NULL
+Also:
+
+Removed the old client-side increment path:
+useTimer.stopTimer() no longer calls tasksClient.updateExecutionDuration(...)
+removed updateExecutionDuration from tasksRepo + tasksClient
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Tasks Page also needs to show Running, like we have on Time Entries page. We can put some icon under where edit and delete are. Plus make edit and delete always visible, not just on hover.
+
+**Changes/Outcome:**
+Implemented on Tasks page
+1) Running indicator
+The task card now shows a small Running label with an icon when the card’s item.id matches the current running timer’s taskId from useTimerStore.
+Placement: under the edit/delete buttons (top-right of the card), as you requested.
+2) Edit/Delete always visible
+Removed the hover-only opacity behavior.
+Edit/Delete buttons are now always visible on every card.
+Where it was changed
+src/components/ui/hover-effect.tsx
+Build status
+npm run build passes.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Plus Time Entries when grouped by project still need to use exactly the same card style as when not grouped by project, now they are visibly different.
+
+**Changes/Outcome:**
+Fixed: grouped Time Entries now uses identical card UI
+I refactored src/pages/TimeEntries.tsx so grouped-by-project entries reuse the exact same card markup/styles as the ungrouped view.
+
+What changed
+Added a shared renderEntryCard(...) helper that renders the entry card.
+Used that helper in both branches:
+grouped-by-project (g.entries.map(...))
+ungrouped (entries.map(...))
+The only remaining visual difference should be the project group container/header (as intended).
+Build status
+npm run build passes.
+Todo status
+Task 33 is effectively done — once you confirm the UI now matches.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+And for Time Entries also ensure edit and delete are always visible.
+
+**Changes/Outcome:**
+Done: Time Entries edit/delete always visible
+I updated the shared renderEntryCard in src/pages/TimeEntries.tsx to remove the hover-only styling, so Edit and Delete buttons are now always visible in both:
+
+Grouped-by-project mode
+Ungrouped mode
+Build status
+npm run build passes.
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+And this small green circle to indicate running on Time Entries page is a bad idea. Better make the green border on it when  it is running. Same on Tasks page.
+
+**Changes/Outcome:**
+Updated running indicator (dot -> border) on both pages
+Time Entries
+Removed the green “running” dot.
+When an entry is running, the entire card now gets a green border via border-emerald-500.
+File: src/pages/TimeEntries.tsx (renderEntryCard)
+Tasks page
+Removed the “Running” label + icon.
+When a task matches the running timer’s taskId, the task card gets a green border via border-emerald-500.
+File: src/components/ui/hover-effect.tsx
+Build
+npm run build passes.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+On Tasks page we also need to print Running... somewhere on the card. And ensure green border does not disappear on hover. And same on Time Entries: I need hover effects there with green border kept.
+
+**Changes/Outcome:**
+Done
+Tasks page
+Added Running... text on the running task card (in the footer metadata area).
+Kept the green border on hover by forcing group-hover:border-emerald-500.
+File: src/components/ui/hover-effect.tsx
+Time Entries page
+Added hover effects (border + shadow) to match the “card hover” feel.
+Kept the green running border on hover via hover:border-emerald-500.
+File: src/pages/TimeEntries.tsx (renderEntryCard)
+Build
+npm run build passes.
+
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Also since only one task is supposed to run at a time, we need to block all other start burtons on Tasks page and Recent Activity section. Only for runnning task it should change to Stop, like it does for Timer section.
+
+**Changes/Outcome:**
+Implemented: only one task can run (Start blocked, Stop shown)
+I updated StartTaskButton to be timer-aware, so this behavior automatically applies everywhere it’s used (Tasks cards + Recent Activity):
+
+If a timer is already running
+All other Start buttons become disabled
+The running task’s button changes to Stop (destructive) and calls stopTimer()
+Files changed
+src/components/tasks/StartTaskButton.tsx
+Build
+npm run build passes.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+On Projects page we should also mark a currently running task
+
+**Changes/Outcome:**
+Projects page: running task is now marked
+I updated the project task table to highlight the running task row and show Running....
+
+What you’ll see
+Running task row gets:
+left green accent border-l-emerald-500
+subtle green background that stays green on hover
+Actions column shows a small Running... label for the running task
+Where
+src/components/projects/ProjectTaskList.tsx
+Build
+npm run build passes.
+Status
+Task 40 is complete.
+
+### [2025-02-16] [Windsurf]
+**Prompt:**
+Analyse requirements to ensure nothing was missed: 
+[List of requirements]
+
+**Changes/Outcome:**
+[Analysis of Requirements]
+
+
+### [2025-02-15 18:32:50] [Windsurf]
+**Prompt:**
+- Fix Small doc drift (worth fixing, but not required by PDF)
+Your README says time_entries.duration is seconds, but you migrated it to minutes. That’s a documentation inconsistency that could confuse reviewers.
+
+**Changes/Outcome:**
+Done
+README doc drift fixed
+Updated README.md so time_entries.duration is correctly documented as minutes (not seconds).
 

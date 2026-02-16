@@ -204,7 +204,7 @@ Unique on `(name, project_id)`.
 | task_id    | uuid      | FK → tasks(id)    |
 | start_time | timestamptz | Required        |
 | end_time   | timestamptz | Null while running |
-| duration   | integer   | Seconds            |
+| duration   | integer   | Minutes            |
 | notes      | text      | Optional            |
 | created_at | timestamptz | Default now()   |
 | updated_at | timestamptz | Updated by trigger |
