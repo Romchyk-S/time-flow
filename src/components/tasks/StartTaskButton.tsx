@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play } from "lucide-react";
+import { Play, Square } from "lucide-react";
 import { useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { tasksClient } from "@/api/clients/tasksClient";
@@ -41,10 +41,33 @@ export function StartTaskButton({
   showIcon = true,
 }: StartTaskButtonProps) {
   const { toast } = useToast();
-  const { startTimer } = useTimer();
+  const { startTimer, stopTimer, isRunning, taskId: runningTaskId } = useTimer();
   const queryClient = useQueryClient();
 
+  const isThisRunningTask = isRunning && !!task.id && runningTaskId === task.id;
+  const disableStartBecauseAnotherRunning = isRunning && !isThisRunningTask;
+
+  const handleStopTask = useCallback(async () => {
+    try {
+      const ok = await stopTimer();
+      if (!ok) {
+        throw new Error('Failed to stop timer');
+      }
+      toast({
+        title: 'Timer stopped',
+      });
+    } catch (error) {
+      console.error('Error stopping timer:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to stop timer. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [stopTimer, toast]);
+
   const handleStartTask = useCallback(async () => {
+    if (disableStartBecauseAnotherRunning) return;
     try {
       // Get or create the project
       let project: Project;
@@ -141,7 +164,12 @@ export function StartTaskButton({
       if (!taskToStart.id) {
         throw new Error('Task ID is missing; cannot start timer');
       }
-      const timerStarted = await startTimer(taskToStart);
+      const taskForTimer = {
+        id: taskToStart.id,
+        name: taskToStart.name,
+        project_id: taskToStart.project_id,
+      };
+      const timerStarted = await startTimer(taskForTimer);
       if (!timerStarted) {
         throw new Error('Failed to start timer');
       }
@@ -176,15 +204,32 @@ export function StartTaskButton({
     }
   }, [task, onTaskUpdate, startTimer, queryClient, toast]);
 
-  return (
+  const btn = (
     <Button
-      variant={variant}
+      variant={isThisRunningTask ? 'destructive' : variant}
       size={size}
-      onClick={handleStartTask}
+      onClick={isThisRunningTask ? handleStopTask : handleStartTask}
       className={className}
+      disabled={disableStartBecauseAnotherRunning}
     >
-      {showIcon && <Play className="h-4 w-4 mr-2" />}
-      {children || 'Start'}
+      {showIcon ? (
+        isThisRunningTask ? (
+          <Square className="h-4 w-4 mr-2" />
+        ) : (
+          <Play className="h-4 w-4 mr-2" />
+        )
+      ) : null}
+      {isThisRunningTask ? 'Stop' : children || 'Start'}
     </Button>
   );
+
+  if (disableStartBecauseAnotherRunning) {
+    return (
+      <span title="Stop the current timer first" className="inline-flex">
+        {btn}
+      </span>
+    );
+  }
+
+  return btn;
 }
