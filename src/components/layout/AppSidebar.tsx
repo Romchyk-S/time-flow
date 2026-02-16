@@ -26,6 +26,7 @@ const navItems = [
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Time Entries", url: "/time-entries", icon: Clock },
 ];
 
 export function AppSidebar() {

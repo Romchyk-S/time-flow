@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTimerStore } from "../store/timerStore";
 import { timerService } from "../services/timerService";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
-import { tasksClient } from "@/api/clients/tasksClient";
+import { tasksRepo } from '@/data/repositories/tasksRepo';
+import { taskNamesRepo } from '@/data/repositories/taskNamesRepo';
 import { projectsClient } from "@/api/clients/projectsClient";
 import { formatDateKey } from "../utils/dateUtils";
 import type { Project, Task } from "@/types";
@@ -32,7 +33,7 @@ export function useTimer() {
     try {
       const running = await timeEntriesClient.getRunning();
       if (running) {
-        const task = await tasksClient.getById(running.task_id);
+        const task = await tasksRepo.getById(running.task_id);
         const project = task ? await projectsClient.getById(task.project_id) : null;
         useTimerStore.getState().setRunning({
           entryId: running.id,
@@ -57,71 +58,36 @@ export function useTimer() {
   }, [refreshRunning]);
 
   const startTimer = useCallback(
-    async (taskNameInput: string, project: Project) => {
-      setError(null);
-      const name = taskNameInput.trim();
-      
+    async (task?: { id: string; name: string; project_id: string }, notes?: string) => {
+      if (!task) return;
       try {
-        if (!name || !project?.id) {
-          throw new Error("Task name and project are required");
-        }
+        // Ensure task has today in work_dates and update usage
+        await tasksRepo.addWorkDate(task.id, formatDateKey(new Date()));
+        await tasksRepo.incrementUsage(task.id);
+        await tasksRepo.updateLastUsed(task.id);
 
-        console.log('[useTimer] Starting timer for task:', { name, projectId: project.id });
-        
-        // Find or create task
-        let task: Task | null = null;
-        try {
-          task = await tasksClient.findByNameAndProject(name, project.id);
-          if (!task) {
-            console.log('[useTimer] Task not found, creating new task');
-            task = await tasksClient.create({ 
-              name, 
-              project_id: project.id,
-              work_dates: [formatDateKey(new Date())]
-            });
-            // Update status separately since it's not in the create type
-            await tasksClient.update(task.id, { status: 'in_progress' });
-          }
-        } catch (taskError) {
-          console.error('[useTimer] Error finding/creating task:', taskError);
-          throw new Error('Failed to find or create task');
-        }
+        // Insert task name into task_names for autocomplete
+        await taskNamesRepo.upsert(task.project_id, task.name);
 
-        try {
-          // Ensure work date is added
-          const todayKey = formatDateKey(new Date());
-          await tasksClient.addWorkDateIfNeeded(task.id, todayKey);
-          
-          // Start time entry
-          const entry = await timeEntriesClient.start(task.id);
-          console.log('[useTimer] Time entry created:', entry.id);
-          
-          // Update store
-          useTimerStore.getState().setRunning({
-            entryId: entry.id,
-            taskId: task.id,
-            taskName: task.name,
-            projectId: project.id,
-            projectName: project.name,
-            projectColor: project.color,
-            startTime: entry.start_time,
-          });
-          
-          return true;
-          
-        } catch (entryError) {
-          console.error('[useTimer] Error starting time entry:', entryError);
-          throw new Error('Failed to start time entry');
-        }
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to start timer';
-        console.error('[useTimer] Error in startTimer:', { error, name, projectId: project?.id });
-        setError(errorMessage);
-        return false;
+        const entry = await timeEntriesClient.start(task.id, notes);
+        // Populate project name and color for the running timer
+        const project = await projectsClient.getById(task.project_id);
+        store.setRunning({
+          entryId: entry.id,
+          taskId: task.id,
+          taskName: task.name,
+          projectId: task.project_id,
+          projectName: project?.name ?? '',
+          projectColor: project?.color ?? '',
+          startTime: entry.start_time,
+        });
+        setError(null);
+      } catch (err) {
+        console.error('Failed to start timer:', err);
+        setError('Failed to start timer');
       }
     },
-    []
+    [queryClient]
   );
 
   const stopTimer = useCallback(async () => {

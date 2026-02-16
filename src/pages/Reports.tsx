@@ -51,23 +51,31 @@ export default function Reports() {
 
   const handleExport = useCallback(
     (scope: ExportScope) => {
-      const csv =
-        scope === "full"
-          ? exportService.fullReportToCsv(summary, periodLabel, breakdown, detailed, daily)
-          : scope === "summary"
+      if (scope === "full") {
+        const blob = exportService.fullReportToXlsxBlob(summary, periodLabel, breakdown, detailed, daily);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `time-report-full-${format(startDate, "yyyy-MM-dd")}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const csv =
+          scope === "summary"
             ? exportService.summaryToCsv(summary, periodLabel)
             : scope === "breakdown"
               ? exportService.projectBreakdownToCsv(breakdown)
               : scope === "detailed"
                 ? exportService.detailedTasksToCsv(detailed)
                 : exportService.dailySummaryToCsv(daily);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `time-report-${scope}-${format(startDate, "yyyy-MM-dd")}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `time-report-${scope}-${format(startDate, "yyyy-MM-dd")}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     },
     [summary, periodLabel, breakdown, detailed, daily, startDate]
   );
@@ -76,7 +84,7 @@ export default function Reports() {
     <div className="p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
-        <p className="text-muted-foreground">View time tracking reports and export to CSV.</p>
+        <p className="text-muted-foreground">View time tracking reports and export to CSV/XLSX.</p>
       </div>
 
       <Card>

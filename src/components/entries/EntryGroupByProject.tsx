@@ -12,23 +12,23 @@ export interface EntryRow {
   projectName: string;
   projectColor: string;
   status: string;
-  duration: number;
+  duration: number; // minutes
   startTime: string;
   endTime: string | null;
   isRunning?: boolean;
 }
 
 export interface EntryGroupByProjectProps {
-  groups: { project: Project; taskCount: number; totalSeconds: number; entries: EntryRow[] }[];
+  groups: { project: Project; taskCount: number; totalMinutes: number; entries: EntryRow[] }[];
   runningTaskId: string | null;
   onEditTaskName: (taskId: string, name: string) => void;
   onEditProject: (taskId: string, projectId: string) => void;
-  onEditDuration: (entryId: string, durationSeconds: number) => void;
+  onEditDuration: (entryId: string, durationMinutes: number) => void;
   onEditStatus: (taskId: string, status: string) => void;
   onDeleteTask: (taskId: string) => void;
   editingEntryId: string | null;
   editingDurationValue: string;
-  onStartEditDuration: (entryId: string, currentSeconds: number) => void;
+  onStartEditDuration: (entryId: string, currentMinutes: number) => void;
   onDurationChange: (value: string) => void;
   onSaveDuration: () => void;
   onCancelEditDuration: () => void;
@@ -57,7 +57,7 @@ export function EntryGroupByProject({
 }: EntryGroupByProjectProps) {
   return (
     <div className={cn("space-y-6", className)}>
-      {groups.map(({ project, taskCount, totalSeconds, entries }) => (
+      {groups.map(({ project, taskCount, totalMinutes, entries }) => (
         <div key={project.id} className="rounded-lg border">
           <div
             className="flex items-center justify-between px-4 py-2 border-b"
@@ -70,7 +70,7 @@ export function EntryGroupByProject({
               {project.name}
             </span>
             <span className="text-sm text-muted-foreground">
-              {taskCount} task{taskCount !== 1 ? "s" : ""} · {formatDurationLong(totalSeconds)}
+              {taskCount} task{taskCount !== 1 ? "s" : ""} · {formatDurationLong(totalMinutes)}
             </span>
           </div>
           <div className="divide-y">
@@ -106,12 +106,12 @@ interface EntryRowInlineProps {
   isRunning: boolean;
   onEditTaskName: (taskId: string, name: string) => void;
   onEditProject: (taskId: string, projectId: string) => void;
-  onEditDuration: (entryId: string, durationSeconds: number) => void;
+  onEditDuration: (entryId: string, durationMinutes: number) => void;
   onEditStatus: (taskId: string, status: string) => void;
   onDeleteTask: (taskId: string) => void;
   editingEntryId: string | null;
   editingDurationValue: string;
-  onStartEditDuration: (entryId: string, currentSeconds: number) => void;
+  onStartEditDuration: (entryId: string, currentMinutes: number) => void;
   onDurationChange: (value: string) => void;
   onSaveDuration: () => void;
   onCancelEditDuration: () => void;

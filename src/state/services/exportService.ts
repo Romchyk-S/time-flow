@@ -4,8 +4,21 @@ import type {
   DetailedTaskRow,
   DailySummaryRow,
 } from "@/types";
-import { formatDurationLong } from "../utils/timeUtils";
-import { formatDateKey } from "../utils/dateUtils";
+import { formatDurationLongSeconds } from "../utils/timeUtils";
+import { formatDateKey, dayEnd } from "../utils/dateUtils";
+
+import * as XLSX from "xlsx";
+
+function rowsToXlsxSheet(rows: Record<string, string | number>[]) {
+  return XLSX.utils.json_to_sheet(rows);
+}
+
+function workbookToBlob(wb: XLSX.WorkBook): Blob {
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  return new Blob([wbout], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
 
 function escapeCsvCell(value: string): string {
   const s = String(value);
@@ -27,10 +40,10 @@ export const exportService = {
   summaryToCsv(summary: ReportSummary, periodLabel: string): string {
     const rows = [
       { metric: "Period", value: periodLabel },
-      { metric: "Total time tracked", value: formatDurationLong(summary.totalSeconds) },
+      { metric: "Total time tracked", value: formatDurationLongSeconds(summary.totalSeconds) },
       { metric: "Number of projects", value: summary.projectCount },
       { metric: "Number of tasks", value: summary.taskCount },
-      { metric: "Average daily time", value: formatDurationLong(summary.averageDailySeconds) },
+      { metric: "Average daily time", value: formatDurationLongSeconds(summary.averageDailySeconds) },
     ];
     return rowsToCsv(rows);
   },
@@ -38,7 +51,7 @@ export const exportService = {
   projectBreakdownToCsv(rows: ProjectBreakdownRow[]): string {
     const data = rows.map((r) => ({
       "Project name": r.projectName,
-      "Total time": formatDurationLong(r.totalSeconds),
+      "Total time": formatDurationLongSeconds(r.totalSeconds),
       "% of total": `${r.percentOfTotal.toFixed(1)}%`,
       "Task count": r.taskCount,
     }));
@@ -50,7 +63,7 @@ export const exportService = {
       Date: r.date,
       Project: r.projectName,
       "Task name": r.taskName,
-      Duration: formatDurationLong(r.durationSeconds),
+      Duration: formatDurationLongSeconds(r.durationSeconds),
       "Time range": r.timeRange,
       "Completed in range": r.completedInRange ? "Yes" : "No",
     }));
@@ -60,14 +73,13 @@ export const exportService = {
   dailySummaryToCsv(rows: DailySummaryRow[]): string {
     const data = rows.map((r) => ({
       Date: r.date,
-      "Total hours": formatDurationLong(r.totalSeconds),
+      "Total hours": formatDurationLongSeconds(r.totalSeconds),
       "Projects count": r.projectCount,
       "Task count": r.taskCount,
     }));
     return rowsToCsv(data);
   },
 
-  /** Full report: summary first, then each table. For Excel-style multi-sheet we output one CSV per "sheet" concatenated with a header line. */
   fullReportToCsv(
     summary: ReportSummary,
     periodLabel: string,
@@ -88,5 +100,43 @@ export const exportService = {
     sheets.push("=== Daily summary ===");
     sheets.push(this.dailySummaryToCsv(daily));
     return sheets.join("\r\n");
+  },
+
+  fullReportToXlsxBlob(
+    summary: ReportSummary,
+    periodLabel: string,
+    breakdown: ProjectBreakdownRow[],
+    detailed: DetailedTaskRow[],
+    daily: DailySummaryRow[]
+  ): Blob {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, rowsToXlsxSheet([
+      { metric: "Period", value: periodLabel },
+      { metric: "Total time tracked", value: formatDurationLongSeconds(summary.totalSeconds) },
+      { metric: "Number of projects", value: summary.projectCount },
+      { metric: "Number of tasks", value: summary.taskCount },
+      { metric: "Average daily time", value: formatDurationLongSeconds(summary.averageDailySeconds) },
+    ]), "Summary");
+    XLSX.utils.book_append_sheet(wb, rowsToXlsxSheet(breakdown.map(r => ({
+      "Project name": r.projectName,
+      "Total time": formatDurationLongSeconds(r.totalSeconds),
+      "% of total": `${r.percentOfTotal.toFixed(1)}%`,
+      "Task count": r.taskCount,
+    }))), "Time by project");
+    XLSX.utils.book_append_sheet(wb, rowsToXlsxSheet(detailed.map(r => ({
+      Date: r.date,
+      Project: r.projectName,
+      "Task name": r.taskName,
+      Duration: formatDurationLongSeconds(r.durationSeconds),
+      "Time range": r.timeRange,
+      "Completed in range": r.completedInRange ? "Yes" : "No",
+    }))), "Detailed tasks");
+    XLSX.utils.book_append_sheet(wb, rowsToXlsxSheet(daily.map(r => ({
+      Date: r.date,
+      "Total hours": formatDurationLongSeconds(r.totalSeconds),
+      "Projects count": r.projectCount,
+      "Task count": r.taskCount,
+    }))), "Daily summary");
+    return workbookToBlob(wb);
   },
 };

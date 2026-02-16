@@ -6,15 +6,12 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory
-  const env = loadEnv(mode, process.cwd(), '');
+  loadEnv(mode, process.cwd(), "");
   
   return {
     define: {
-      'process.env': {
-        ...env,
-        NODE_ENV: process.env.NODE_ENV || mode
-      },
-      global: {}
+      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || mode),
+      global: {},
     },
     server: {
       host: "::",

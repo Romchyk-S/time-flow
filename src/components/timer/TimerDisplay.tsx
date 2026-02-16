@@ -1,4 +1,4 @@
-import { formatDuration } from "@/state/utils/timeUtils";
+import { formatDurationSeconds } from "@/state/utils/timeUtils";
 import { cn } from "@/lib/utils";
 import { Timer } from "lucide-react";
 
@@ -31,7 +31,7 @@ export function TimerDisplay({
           </span>
         )}
         <span className="font-mono text-sm font-semibold tabular-nums tracking-tight">
-          {formatDuration(elapsedTime)}
+          {formatDurationSeconds(elapsedTime)}
         </span>
         {taskName && (
           <span className="text-sm text-foreground truncate max-w-[160px]" title={taskName}>
@@ -66,7 +66,7 @@ export function TimerDisplay({
           </span>
         )}
         <span className="font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">
-          {formatDuration(elapsedTime)}
+          {formatDurationSeconds(elapsedTime)}
         </span>
       </div>
       {/* Task and project info */}

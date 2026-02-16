@@ -90,7 +90,7 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
               {typeof latestDurationMinutes === "number" ? (
                 <div className="flex items-center shrink-0">
                   <Clock className="h-4 w-4 mr-1" />
-                  <span>{formatDurationLong(latestDurationMinutes * 60)}</span>
+                  <span>{formatDurationLong(latestDurationMinutes)}</span>
                 </div>
               ) : null}
             </div>

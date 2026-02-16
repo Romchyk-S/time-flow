@@ -8,8 +8,7 @@ import { useAutocomplete } from "@/state/hooks/useAutocomplete";
 import { TimerDisplay } from "@/components/timer/TimerDisplay";
 import { TaskInput } from "@/components/timer/TaskInput";
 import { ProjectSelect } from "@/components/timer/ProjectSelect";
-import { formatDurationLong } from "@/state/utils/timeUtils";
-import { formatDuration } from "@/state/utils/timeUtils";
+import { formatDurationLongSeconds, formatDurationSeconds } from "@/state/utils/timeUtils";
 import { todayStart, dayEnd, formatDateKey, subDays } from "@/state/utils/dateUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
@@ -179,7 +178,7 @@ const Dashboard = () => {
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
                     </span>
                     <span className="font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                      {formatDuration(elapsed)}
+                      {formatDurationSeconds(elapsed)}
                     </span>
                   </div>
                   <div className="text-sm text-foreground w-full">
@@ -264,7 +263,7 @@ const Dashboard = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatDurationLong(todaySeconds)}</div>
+            <div className="text-2xl font-bold">{formatDurationLongSeconds(todaySeconds)}</div>
             <p className="text-xs text-muted-foreground">
               {todaySeconds > 0 ? "Time tracked today" : "No time tracked today"}
             </p>
@@ -300,7 +299,7 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatDurationLong(weekSeconds)}</div>
+            <div className="text-2xl font-bold">{formatDurationLongSeconds(weekSeconds)}</div>
             <p className="text-xs text-muted-foreground">
               {weekSeconds > 0 ? "Time this week" : "No time this week"}
             </p>

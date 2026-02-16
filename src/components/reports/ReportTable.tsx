@@ -6,7 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDurationLong } from "@/state/utils/timeUtils";
+import { formatDurationLongSeconds } from "@/state/utils/timeUtils";
 import type { ProjectBreakdownRow, DetailedTaskRow, DailySummaryRow } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ export function ReportTableBreakdown({ rows, className }: ReportTableBreakdownPr
                 />
                 {r.projectName}
               </TableCell>
-              <TableCell className="text-right">{formatDurationLong(r.totalSeconds)}</TableCell>
+              <TableCell className="text-right">{formatDurationLongSeconds(r.totalSeconds)}</TableCell>
               <TableCell className="text-right">{r.percentOfTotal.toFixed(1)}%</TableCell>
               <TableCell className="text-right">{r.taskCount}</TableCell>
             </TableRow>
@@ -79,7 +79,7 @@ export function ReportTableDetailed({ rows, className }: ReportTableDetailedProp
                 {r.projectName}
               </TableCell>
               <TableCell>{r.taskName}</TableCell>
-              <TableCell className="text-right">{formatDurationLong(r.durationSeconds)}</TableCell>
+              <TableCell className="text-right">{formatDurationLongSeconds(r.durationSeconds)}</TableCell>
               <TableCell>{r.timeRange}</TableCell>
               <TableCell>{r.completedInRange ? "Yes" : "No"}</TableCell>
             </TableRow>
@@ -111,7 +111,7 @@ export function ReportTableDaily({ rows, className }: ReportTableDailyProps) {
           {rows.map((r) => (
             <TableRow key={r.date}>
               <TableCell>{r.date}</TableCell>
-              <TableCell className="text-right">{formatDurationLong(r.totalSeconds)}</TableCell>
+              <TableCell className="text-right">{formatDurationLongSeconds(r.totalSeconds)}</TableCell>
               <TableCell className="text-right">{r.projectCount}</TableCell>
               <TableCell className="text-right">{r.taskCount}</TableCell>
             </TableRow>

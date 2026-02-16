@@ -7,11 +7,12 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { FloatingTimer } from "@/components/timer/FloatingTimer";
-import Dashboard from "@/pages/Dashboard";
-import Tasks from "@/pages/Tasks";
-import Projects from "@/pages/Projects";
-import Reports from "@/pages/Reports";
-import Settings from "@/pages/Settings";
+import Dashboard from '@/pages/Dashboard';
+import Tasks from '@/pages/Tasks';
+import Projects from '@/pages/Projects';
+import Reports from '@/pages/Reports';
+import Settings from '@/pages/Settings';
+import TimeEntries from '@/pages/TimeEntries';
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ const App = () => (
                   <Route path="/projects" element={<Projects />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/time-entries" element={<TimeEntries />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

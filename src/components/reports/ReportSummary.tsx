@@ -1,5 +1,5 @@
 import type { ReportSummary as ReportSummaryType } from "@/types";
-import { formatDurationLong } from "@/state/utils/timeUtils";
+import { formatDurationLongSeconds } from "@/state/utils/timeUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export function ReportSummary({ summary, className }: ReportSummaryProps) {
           <CardTitle className="text-sm font-medium">Total time tracked</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatDurationLong(summary.totalSeconds)}</div>
+          <div className="text-2xl font-bold">{formatDurationLongSeconds(summary.totalSeconds)}</div>
         </CardContent>
       </Card>
       <Card>
@@ -40,7 +40,7 @@ export function ReportSummary({ summary, className }: ReportSummaryProps) {
           <CardTitle className="text-sm font-medium">Average daily time</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatDurationLong(summary.averageDailySeconds)}</div>
+          <div className="text-2xl font-bold">{formatDurationLongSeconds(summary.averageDailySeconds)}</div>
         </CardContent>
       </Card>
     </div>
