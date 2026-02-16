@@ -104,7 +104,7 @@ const Dashboard = () => {
     enabled: !!todayEntries.data,
   });
 
-  const todaySeconds = (todayEntries.data ?? []).reduce((s, e) => s + (e.duration ?? 0), 0);
+  const todaySeconds = (todayEntries.data ?? []).reduce((s, e) => s + ((e.duration ?? 0) * 60), 0);
 
   const weekStart = new Date();
   const day = weekStart.getDay();
@@ -118,7 +118,7 @@ const Dashboard = () => {
     queryFn: () =>
       timeEntriesClient.getByDateRange(weekStart.toISOString(), weekEnd.toISOString()),
   });
-  const weekSeconds = (weekEntries.data ?? []).reduce((s, e) => s + (e.duration ?? 0), 0);
+  const weekSeconds = (weekEntries.data ?? []).reduce((s, e) => s + ((e.duration ?? 0) * 60), 0);
 
   const taskCount = new Set((todayEntries.data ?? []).map((e) => (e as { task_id: string }).task_id)).size;
 
@@ -129,7 +129,7 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Track time and see your overview.</p>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-visible">
         <div className="flex flex-col md:flex-row">
           {/* Left: Input controls */}
           <div className="flex-1 p-5 space-y-4">
@@ -148,7 +148,7 @@ const Dashboard = () => {
                   disabled={isRunning}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative">
                 <label className="text-xs font-medium text-muted-foreground">Task</label>
                 <TaskInput
                   value={taskNameInput}
@@ -164,7 +164,7 @@ const Dashboard = () => {
           </div>
 
           {/* Right: Timer display & controls */}
-          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-green-500/5' : 'bg-muted/30'}`}>
+          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-emerald-500/10 dark:bg-emerald-500/10' : 'bg-muted/30 dark:bg-muted/20'}`}>
             {isRunning ? (
               <>
                 <TimerDisplay

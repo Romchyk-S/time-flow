@@ -63,12 +63,12 @@ export const timeEntriesClient = {
     return data as TimeEntry;
   },
 
-  async stop(id: string, durationSeconds: number): Promise<TimeEntry> {
+  async stop(id: string, durationMinutes: number): Promise<TimeEntry> {
     const { data, error } = await db
       .from("time_entries")
       .update({
         end_time: new Date().toISOString(),
-        duration: durationSeconds,
+        duration: durationMinutes,
       })
       .eq("id", id)
       .select()

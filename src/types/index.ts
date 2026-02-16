@@ -33,7 +33,7 @@ export interface TimeEntry {
   task_id: string;
   start_time: string;
   end_time: string | null;
-  duration: number;
+  duration: number; // Duration in minutes
   notes: string | null;
   created_at: string;
   updated_at: string;

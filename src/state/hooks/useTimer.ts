@@ -141,11 +141,13 @@ export function useTimer() {
       // Calculate duration
       const durationMs = timerService.calculateDuration(startTime);
       const durationSeconds = Math.max(1, Math.floor(durationMs / 1000));
+      const durationMinutes = Math.max(1, Math.ceil(durationMs / 60000));
       console.log('[useTimer] Stopping timer', {
         taskId,
         entryId,
         durationMs,
         durationSeconds,
+        durationMinutes,
         startTime: new Date(startTime).toISOString()
       });
       
@@ -154,7 +156,7 @@ export function useTimer() {
       
       // Stop the time entry
       console.log('[useTimer] Stopping time entry', { entryId, durationMs });
-      await timeEntriesClient.stop(entryId, durationMs);
+      await timeEntriesClient.stop(entryId, durationMinutes);
       
       // Update task's execution duration
       console.log('[useTimer] Updating task execution duration', { taskId, durationSeconds });

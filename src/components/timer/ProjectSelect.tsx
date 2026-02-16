@@ -39,8 +39,8 @@ export function ProjectSelect({
           <SelectItem key={p.id} value={p.id}>
             <span className="flex items-center gap-2">
               <span
-                className="h-3 w-3 rounded-full shrink-0"
-                style={{ backgroundColor: p.color }}
+                className="h-3 w-3 rounded-full shrink-0 border"
+                style={{ backgroundColor: p.color, borderColor: "var(--border)" }}
               />
               {p.name}
             </span>

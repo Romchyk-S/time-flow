@@ -21,7 +21,7 @@ function buildReport(
   detailed: DetailedTaskRow[];
   daily: DailySummaryRow[];
 } {
-  const totalSeconds = entries.reduce((s, e) => s + (e.duration ?? 0), 0);
+  const totalSeconds = entries.reduce((s, e) => s + ((e.duration ?? 0) * 60), 0);
   const projectIds = new Set<string>();
   const taskIds = new Set<string>();
   const byProject = new Map<string, { seconds: number; tasks: Set<string> }>();
@@ -31,7 +31,7 @@ function buildReport(
     const task = (e as { task?: { id: string; name: string; project_id: string; project?: { id: string; name: string; color: string } } }).task;
     if (!task) continue;
     const proj = task.project;
-    const duration = e.duration ?? 0;
+    const duration = (e.duration ?? 0) * 60;
     const dateKey = formatDateKey(new Date(e.start_time));
     projectIds.add(task.project_id);
     taskIds.add(task.id);
@@ -82,7 +82,7 @@ function buildReport(
       projectName: task?.project?.name ?? "",
       projectColor: task?.project?.color ?? "#888",
       taskName: task?.name ?? "",
-      durationSeconds: e.duration ?? 0,
+      durationSeconds: (e.duration ?? 0) * 60,
       timeRange: range,
       completedInRange: !!e.end_time,
       taskId: task?.id ?? "",
