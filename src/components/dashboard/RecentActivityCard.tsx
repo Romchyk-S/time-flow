@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskWithProject } from "@/types";
 import { format } from "date-fns";
@@ -79,37 +79,37 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
         </CardHeader>
         
         <CardContent className="pt-0 mt-auto">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Clock className="h-4 w-4 mr-1" />
-              <span>
-                {task.last_used ? 
-                  format(new Date(task.last_used), 'yyyy-MM-dd') : 
-                  'Never'}
-              </span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground min-w-0">
+              <div className="flex items-center shrink-0">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>
+                  {task.last_used ? format(new Date(task.last_used), "yyyy-MM-dd") : "Never"}
+                </span>
+              </div>
+              {typeof latestDurationMinutes === "number" ? (
+                <div className="flex items-center shrink-0">
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span>{formatDurationLong(latestDurationMinutes * 60)}</span>
+                </div>
+              ) : null}
             </div>
-            
-            <StartTaskButton 
+
+            <StartTaskButton
               task={{
                 ...task,
                 project_id: task.project_id,
-                project: task.project
+                project: task.project,
               }}
               onTaskUpdate={handleStartTask}
               variant="ghost"
               size="sm"
-              className="h-8"
+              className="h-8 shrink-0"
               showIcon={false}
             >
               Start
             </StartTaskButton>
           </div>
-
-          {typeof latestDurationMinutes === "number" ? (
-            <div className="mt-2 text-xs text-muted-foreground">
-              Latest run: {formatDurationLong(latestDurationMinutes * 60)}
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </div>
