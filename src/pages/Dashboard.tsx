@@ -9,6 +9,7 @@ import { TimerDisplay } from "@/components/timer/TimerDisplay";
 import { TaskInput } from "@/components/timer/TaskInput";
 import { ProjectSelect } from "@/components/timer/ProjectSelect";
 import { formatDurationLong } from "@/state/utils/timeUtils";
+import { formatDuration } from "@/state/utils/timeUtils";
 import { todayStart, dayEnd, formatDateKey, subDays } from "@/state/utils/dateUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
@@ -168,16 +169,48 @@ const Dashboard = () => {
           </div>
 
           {/* Right: Timer display & controls */}
-          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-emerald-500/5 dark:bg-emerald-500/10' : 'bg-muted/30 dark:bg-muted/20'}`}>
+          <div className={`flex flex-col items-center justify-center gap-3 p-5 min-w-[220px] border-t md:border-t-0 md:border-l transition-colors ${isRunning ? 'bg-muted/20 dark:bg-muted/10' : 'bg-muted/30 dark:bg-muted/20'}`}>
             {isRunning ? (
               <>
-                <TimerDisplay
-                  isRunning={true}
-                  elapsedTime={elapsed}
-                  taskName={taskName}
-                  projectName={projectName}
-                  projectColor={projectColor}
-                />
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                    </span>
+                    <span className="font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                      {formatDuration(elapsed)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-foreground w-full">
+                    <div className="flex items-baseline gap-2 justify-center">
+                      <span className="text-muted-foreground">Task:</span>
+                      <span className="font-medium" title={taskName ?? undefined}>{taskName ?? ""}</span>
+                    </div>
+                    <div className="flex items-center gap-2 justify-center mt-1">
+                      <span className="text-muted-foreground">Project:</span>
+                      {projectName ? (
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0 border"
+                            style={{ backgroundColor: projectColor ?? "#888888", borderColor: "var(--border)" }}
+                          />
+                          <span
+                            className="text-xs font-medium rounded-full px-2.5 py-0.5 truncate max-w-[160px]"
+                            style={{
+                              backgroundColor: projectColor ? `${projectColor}12` : "hsl(var(--muted))",
+                              border: `1px solid ${projectColor ? `${projectColor}55` : "hsl(var(--border))"}`,
+                              color: "hsl(var(--foreground))",
+                            }}
+                            title={projectName}
+                          >
+                            {projectName}
+                          </span>
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
                 <Button
                   variant="destructive"
                   size="default"

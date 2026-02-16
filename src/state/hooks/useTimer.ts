@@ -141,11 +141,21 @@ export function useTimer() {
       // Calculate duration
       const durationSeconds = Math.max(1, Math.floor(timerService.calculateDuration(startTime)));
       const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
+      const parsedStartMs = Date.parse(
+        (startTime.includes(" ") && !startTime.includes("T") ? startTime.replace(" ", "T") : startTime).replace(
+          /\+00$/,
+          "+00:00"
+        )
+      );
+      const nowMs = Date.now();
       console.log('[useTimer] Stopping timer', {
         taskId,
         entryId,
         durationSeconds,
         durationMinutes,
+        parsedStartMs,
+        nowMs,
+        diffSeconds: Number.isFinite(parsedStartMs) ? Math.floor((nowMs - parsedStartMs) / 1000) : null,
         startTime: new Date(startTime).toISOString()
       });
       
