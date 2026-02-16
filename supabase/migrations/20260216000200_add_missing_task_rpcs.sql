@@ -8,12 +8,12 @@ AS $$
 BEGIN
   UPDATE public.tasks
   SET work_dates = array_append(
-    COALESCE(work_dates, ARRAY[]::text[]),
+    COALESCE(work_dates::text[], ARRAY[]::text[]),
     date_key
   ),
       updated_at = NOW()
   WHERE id = task_id
-    AND NOT (work_dates @> ARRAY[date_key]);
+    AND NOT (work_dates::text[] @> ARRAY[date_key]);
 END;
 $$;
 
