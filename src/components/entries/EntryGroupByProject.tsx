@@ -1,6 +1,6 @@
 import { formatDurationLong } from "@/state/utils/timeUtils";
 import { formatDuration } from "@/state/utils/timeUtils";
-import type { Project } from "@/types";
+import type { Project, TaskStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { CircleDot, Pause } from "lucide-react";
 
@@ -11,7 +11,7 @@ export interface EntryRow {
   projectId: string;
   projectName: string;
   projectColor: string;
-  status: string;
+  status: TaskStatus;
   duration: number; // minutes
   startTime: string;
   endTime: string | null;
@@ -24,15 +24,15 @@ export interface EntryGroupByProjectProps {
   onEditTaskName: (taskId: string, name: string) => void;
   onEditProject: (taskId: string, projectId: string) => void;
   onEditDuration: (entryId: string, durationMinutes: number) => void;
-  onEditStatus: (taskId: string, status: string) => void;
-  onDeleteTask: (taskId: string) => void;
+  onEditStatus: (taskId: string, status: TaskStatus) => void;
+  onDeleteEntry: (entryId: string) => void;
   editingEntryId: string | null;
   editingDurationValue: string;
   onStartEditDuration: (entryId: string, currentMinutes: number) => void;
   onDurationChange: (value: string) => void;
   onSaveDuration: () => void;
   onCancelEditDuration: () => void;
-  statusOptions: { value: string; label: string }[];
+  statusOptions: { value: TaskStatus; label: string }[];
   projects: Project[];
   className?: string;
 }
@@ -44,7 +44,7 @@ export function EntryGroupByProject({
   onEditProject,
   onEditDuration,
   onEditStatus,
-  onDeleteTask,
+  onDeleteEntry,
   editingEntryId,
   editingDurationValue,
   onStartEditDuration,
@@ -83,7 +83,7 @@ export function EntryGroupByProject({
                 onEditProject={onEditProject}
                 onEditDuration={onEditDuration}
                 onEditStatus={onEditStatus}
-                onDeleteTask={onDeleteTask}
+                onDeleteEntry={onDeleteEntry}
                 editingEntryId={editingEntryId}
                 editingDurationValue={editingDurationValue}
                 onStartEditDuration={onStartEditDuration}
@@ -107,15 +107,15 @@ interface EntryRowInlineProps {
   onEditTaskName: (taskId: string, name: string) => void;
   onEditProject: (taskId: string, projectId: string) => void;
   onEditDuration: (entryId: string, durationMinutes: number) => void;
-  onEditStatus: (taskId: string, status: string) => void;
-  onDeleteTask: (taskId: string) => void;
+  onEditStatus: (taskId: string, status: TaskStatus) => void;
+  onDeleteEntry: (entryId: string) => void;
   editingEntryId: string | null;
   editingDurationValue: string;
   onStartEditDuration: (entryId: string, currentMinutes: number) => void;
   onDurationChange: (value: string) => void;
   onSaveDuration: () => void;
   onCancelEditDuration: () => void;
-  statusOptions: { value: string; label: string }[];
+  statusOptions: { value: TaskStatus; label: string }[];
   projects: Project[];
 }
 
@@ -126,7 +126,7 @@ function EntryRowInline({
   onEditProject,
   onEditDuration,
   onEditStatus,
-  onDeleteTask,
+  onDeleteEntry,
   editingEntryId,
   editingDurationValue,
   onStartEditDuration,
@@ -203,7 +203,7 @@ function EntryRowInline({
         <select
           className="flex-1 min-w-0 rounded border bg-background px-2 py-1 text-xs capitalize"
           value={row.status}
-          onChange={(e) => onEditStatus(row.taskId, e.target.value)}
+          onChange={(e) => onEditStatus(row.taskId, e.target.value as TaskStatus)}
         >
           {statusOptions.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -212,7 +212,7 @@ function EntryRowInline({
       </span>
       <button
         type="button"
-        onClick={() => onDeleteTask(row.taskId)}
+        onClick={() => onDeleteEntry(row.id)}
         className="text-destructive hover:underline text-xs shrink-0"
       >
         Delete

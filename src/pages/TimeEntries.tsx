@@ -1,19 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Trash2 } from 'lucide-react';
 import { useTimeEntriesForDay } from '@/state/hooks/useTimeEntries';
 import { formatDuration, parseDurationToMinutes, minutesToDurationInput } from '@/state/utils/timeUtils';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
@@ -22,7 +13,6 @@ import {
 import { EntryGroupByProject } from '@/components/entries/EntryGroupByProject';
 import { useToast } from '@/components/ui/use-toast';
 import { timeEntriesClient } from '@/api/clients/timeEntriesClient';
-import { useQueryClient } from '@tanstack/react-query';
 import { tasksClient } from '@/api/clients/tasksClient';
 import { useProjects } from '@/state/hooks/useProjects';
 import type { Project, TaskStatus } from '@/types';
@@ -51,8 +41,11 @@ export default function TimeEntriesPage() {
   const [groupByProject, setGroupByProject] = useState(true);
   const { toast } = useToast();
   const { entries = [], isLoading, refetch } = useTimeEntriesForDay(selectedDate);
-  const queryClient = useQueryClient();
   const { data: projects = [] } = useProjects();
+
+  const runningTaskId = entries.find((e) => e.end_time === null)?.task_id ?? null;
+
+  const totalMinutesForDay = entries.reduce((s, e) => s + (e.duration ?? 0), 0);
 
   // Editing state
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -72,12 +65,12 @@ export default function TimeEntriesPage() {
                 name: proj.name,
                 color: proj.color,
               },
-              taskCount: 0,
+              taskIds: new Set<string>(),
               totalMinutes: 0,
               entries: [],
             };
           }
-          acc[key].taskCount += 1;
+          acc[key].taskIds.add(entry.task_id);
           acc[key].totalMinutes += entry.duration ?? 0;
           acc[key].entries.push({
             id: entry.id,
@@ -86,7 +79,7 @@ export default function TimeEntriesPage() {
             projectId: proj.id,
             projectName: proj.name,
             projectColor: proj.color,
-            status: (entry.task?.status ?? 'not_started') as TaskStatus | undefined,
+            status: (entry.task?.status ?? 'not_started') as TaskStatus,
             duration: entry.duration ?? 0,
             startTime: entry.start_time,
             endTime: entry.end_time,
@@ -94,7 +87,12 @@ export default function TimeEntriesPage() {
           });
           return acc;
         }, {} as Record<string, any>)
-      )
+      ).map((g: any) => ({
+        project: g.project as Project,
+        taskCount: (g.taskIds as Set<string>).size,
+        totalMinutes: g.totalMinutes as number,
+        entries: g.entries as any[],
+      }))
     : [];
 
   // Handlers
@@ -120,7 +118,7 @@ export default function TimeEntriesPage() {
     }
   };
 
-  const handleEditStatus = async (taskId: string, status: string) => {
+  const handleEditStatus = async (taskId: string, status: TaskStatus) => {
     try {
       await tasksClient.update(taskId, { status });
       await refetch();
@@ -131,15 +129,15 @@ export default function TimeEntriesPage() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm('Delete this time entry?')) return;
     try {
-      await tasksClient.delete(taskId);
+      await timeEntriesClient.delete(entryId);
       await refetch();
-      toast({ title: 'Task deleted' });
+      toast({ title: 'Entry deleted' });
     } catch (error) {
-      console.error('Failed to delete task:', error);
-      toast({ title: 'Error', description: 'Failed to delete task', variant: 'destructive' });
+      console.error('Failed to delete entry:', error);
+      toast({ title: 'Error', description: 'Failed to delete entry', variant: 'destructive' });
     }
   };
 
@@ -210,6 +208,7 @@ export default function TimeEntriesPage() {
               ? "Today's entries"
               : `Entries for ${format(selectedDate, 'EEEE, MMMM d, yyyy')}`}
           </p>
+          <p className="text-sm text-muted-foreground">Total: {formatDuration(totalMinutesForDay)}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -262,12 +261,14 @@ export default function TimeEntriesPage() {
       ) : groupByProject ? (
         <EntryGroupByProject
           groups={groups}
-          runningTaskId={null}
+          runningTaskId={runningTaskId}
           onEditTaskName={handleEditTaskName}
           onEditProject={handleEditProject}
-          onEditDuration={handleSaveDuration}
+          onEditDuration={() => {
+            /* duration save handled via onSaveDuration */
+          }}
           onEditStatus={handleEditStatus}
-          onDeleteTask={handleDeleteTask}
+          onDeleteEntry={handleDeleteEntry}
           editingEntryId={editingEntryId}
           editingDurationValue={editingDurationValue}
           onStartEditDuration={handleStartEditDuration}
@@ -282,54 +283,114 @@ export default function TimeEntriesPage() {
           {entries.map((entry) => {
             const task = entry.task;
             const proj = task?.project;
+            const isRunning = entry.end_time === null;
             const timeRange = entry.end_time
               ? `${new Date(entry.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(entry.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
               : 'Running...';
+            const isEditingDuration = editingEntryId === entry.id;
             return (
               <div key={entry.id} className="relative group h-full w-full rounded-lg border bg-card p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
+                    {isRunning ? (
+                      <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" title="Timer running" />
+                    ) : null}
                     {proj && (
                       <span
                         className="inline-block w-3 h-3 rounded-full border-2"
                         style={{ backgroundColor: proj.color, borderColor: proj.color }}
                       />
                     )}
-                    <span className="font-medium">{task?.name ?? 'Unknown task'}</span>
+                    <input
+                      type="text"
+                      className="font-medium bg-transparent border-b border-transparent hover:border-input focus:border-ring focus:outline-none px-1 py-0.5 w-full"
+                      defaultValue={task?.name ?? ''}
+                      placeholder="Task name"
+                      onBlur={(e) => {
+                        const name = e.target.value.trim();
+                        if (task?.id && name && name !== task.name) {
+                          handleEditTaskName(task.id, name);
+                        }
+                      }}
+                    />
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
-                      onClick={() => {
-                        const minutes = parseDurationToMinutes(prompt('Edit duration (H:MM):', minutesToDurationInput(entry.duration ?? 0)));
-                        if (!isNaN(minutes) && minutes >= 0) {
-                          timeEntriesClient.update(entry.id, { duration: minutes }).then(() => refetch());
-                        }
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
                       className="h-6 w-6 text-red-500 hover:text-red-700"
                       onClick={() => {
-                        if (confirm('Delete this entry?')) {
-                          timeEntriesClient.delete(entry.id).then(() => refetch());
-                        }
+                        handleDeleteEntry(entry.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-1 text-sm">
-                  <div>Project: {proj?.name ?? 'None'}</div>
-                  <div>Status: {(entry.task?.status ?? 'not_started') as TaskStatus | undefined}</div>
-                  <div>Duration: {formatDuration(entry.duration ?? 0)}</div>
-                  <div>Time: {timeRange}</div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Project</span>
+                    <select
+                      className="min-w-[140px] rounded border bg-background px-2 py-1 text-xs"
+                      value={task?.project_id ?? ''}
+                      onChange={(e) => {
+                        if (task?.id) handleEditProject(task.id, e.target.value);
+                      }}
+                    >
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Status</span>
+                    <select
+                      className="min-w-[140px] rounded border bg-background px-2 py-1 text-xs"
+                      value={(task?.status ?? 'not_started') as TaskStatus}
+                      onChange={(e) => {
+                        if (task?.id) handleEditStatus(task.id, e.target.value as TaskStatus);
+                      }}
+                    >
+                      {statusOptions.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Duration</span>
+                    {isEditingDuration ? (
+                      <span className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          className="w-16 rounded border px-1 py-0.5 text-xs font-mono"
+                          value={editingDurationValue}
+                          onChange={(e) => handleDurationChange(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveDuration();
+                            if (e.key === 'Escape') handleCancelEditDuration();
+                          }}
+                          autoFocus
+                        />
+                        <button type="button" onClick={handleSaveDuration} className="text-primary text-xs">Save</button>
+                        <button type="button" onClick={handleCancelEditDuration} className="text-muted-foreground text-xs">Cancel</button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="font-mono hover:underline"
+                        onClick={() => handleStartEditDuration(entry.id, entry.duration ?? 0)}
+                      >
+                        {formatDuration(entry.duration ?? 0)}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-mono text-xs">{timeRange}</span>
+                  </div>
                 </div>
               </div>
             );
