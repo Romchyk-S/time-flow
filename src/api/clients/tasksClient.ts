@@ -44,12 +44,15 @@ export const tasksClient = {
     return tasksRepo.updateLastUsed(id);
   },
 
-  async updateExecutionDuration(id: string, durationSeconds: number): Promise<void> {
-    return tasksRepo.updateExecutionDuration(id, durationSeconds);
-  },
-
   async findByNameAndProject(name: string, projectId: string): Promise<Task | null> {
     return tasksRepo.findByNameAndProject(name, projectId);
+  },
+
+  async getNameSuggestionsByProject(
+    projectId: string,
+    options?: { searchTerm?: string; limit?: number }
+  ): Promise<string[]> {
+    return tasksRepo.getNameSuggestionsByProject(projectId, options);
   },
 
   async getByProject(

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { taskNamesClient } from "@/api/clients/taskNamesClient";
+import { tasksClient } from "@/api/clients/tasksClient";
 
 const LIMIT = 10;
 
@@ -15,8 +15,11 @@ export function useAutocomplete(projectId: string | null) {
       }
       setLoading(true);
       try {
-        const names = await taskNamesClient.searchByProject(projectId, { searchTerm: searchTerm || undefined, limit: LIMIT });
-        setSuggestions(names.map((tn) => tn.name));
+        const names = await tasksClient.getNameSuggestionsByProject(projectId, {
+          searchTerm: searchTerm || undefined,
+          limit: LIMIT,
+        });
+        setSuggestions(names);
       } finally {
         setLoading(false);
       }

@@ -4,7 +4,6 @@ import { useTimerStore } from "../store/timerStore";
 import { timerService } from "../services/timerService";
 import { timeEntriesClient } from "@/api/clients/timeEntriesClient";
 import { tasksRepo } from '@/data/repositories/tasksRepo';
-import { taskNamesRepo } from '@/data/repositories/taskNamesRepo';
 import { projectsClient } from "@/api/clients/projectsClient";
 import { formatDateKey } from "../utils/dateUtils";
 import type { Project, Task } from "@/types";
@@ -65,9 +64,6 @@ export function useTimer() {
         await tasksRepo.addWorkDate(task.id, formatDateKey(new Date()));
         await tasksRepo.incrementUsage(task.id);
         await tasksRepo.updateLastUsed(task.id);
-
-        // Insert task name into task_names for autocomplete
-        await taskNamesRepo.upsert(task.project_id, task.name);
 
         const entry = await timeEntriesClient.start(task.id, notes);
         // Populate project name and color for the running timer
@@ -131,10 +127,6 @@ export function useTimer() {
       // Stop the time entry
       console.log('[useTimer] Stopping time entry', { entryId, durationSeconds, durationMinutes });
       await timeEntriesClient.stop(entryId, durationMinutes);
-      
-      // Update task's execution duration
-      console.log('[useTimer] Updating task execution duration', { taskId, durationSeconds });
-      await tasksClient.updateExecutionDuration(taskId, durationSeconds);
       
       // Invalidate relevant queries
       console.log('[useTimer] Invalidating queries');

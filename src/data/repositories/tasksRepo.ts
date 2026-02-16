@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Task, TaskStatus } from '@/types';
-import { taskNamesRepo } from '@/data/repositories/taskNamesRepo';
 
 const db = supabase as any;
 
@@ -82,7 +81,6 @@ export const tasksRepo = {
       .select()
       .single();
     if (error) throw error;
-    await taskNamesRepo.ensureExists(toInsert.project_id, toInsert.name);
     return data as Task;
   },
 
@@ -99,9 +97,6 @@ export const tasksRepo = {
   },
 
   async update(id: string, updates: Partial<Omit<Task, 'id' | 'created_at' | 'updated_at'>>): Promise<Task> {
-    const shouldSyncName = typeof (updates as any).name === 'string' || typeof (updates as any).project_id === 'string';
-    const before = shouldSyncName ? await this.getById(id) : null;
-
     const nextUpdates = { ...updates } as any;
     if (typeof nextUpdates.name === 'string') {
       nextUpdates.name = nextUpdates.name.trim();
@@ -114,16 +109,43 @@ export const tasksRepo = {
       .select()
       .single();
     if (error) throw error;
+    return data as Task;
+  },
 
-    if (shouldSyncName) {
-      const projectId = (nextUpdates.project_id as string | undefined) ?? before?.project_id;
-      const name = (nextUpdates.name as string | undefined) ?? before?.name;
-      if (projectId && name) {
-        await taskNamesRepo.ensureExists(projectId, name);
-      }
+  async getNameSuggestionsByProject(
+    projectId: string,
+    options?: { searchTerm?: string; limit?: number }
+  ): Promise<string[]> {
+    const limit = options?.limit ?? 10;
+    const term = options?.searchTerm?.trim();
+
+    let q = db
+      .from('tasks')
+      .select('name, last_used, usage_count')
+      .eq('project_id', projectId)
+      .order('last_used', { ascending: false, nullsFirst: false })
+      .order('usage_count', { ascending: false })
+      .limit(Math.max(50, limit * 5));
+
+    if (term) {
+      q = q.ilike('name', `%${term}%`);
     }
 
-    return data as Task;
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const seen = new Set<string>();
+    const names: string[] = [];
+    for (const row of (data ?? []) as any[]) {
+      const n = (row?.name ?? '').trim();
+      if (!n) continue;
+      const key = n.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      names.push(n);
+      if (names.length >= limit) break;
+    }
+    return names;
   },
 
   async delete(id: string): Promise<void> {
@@ -151,12 +173,6 @@ export const tasksRepo = {
 
   async addWorkDate(id: string, dateKey: string): Promise<void> {
     const { error } = await db.rpc('add_task_work_date', { task_id: id, date_key: dateKey });
-    if (error) throw error;
-  },
-
-  async updateExecutionDuration(id: string, durationSeconds: number): Promise<void> {
-    const durationMinutes = Math.ceil(durationSeconds / 60);
-    const { error } = await db.rpc('increment_task_duration', { task_id: id, duration_minutes: durationMinutes });
     if (error) throw error;
   },
 
