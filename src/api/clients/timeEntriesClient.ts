@@ -30,7 +30,10 @@ export const timeEntriesClient = {
     return timeEntriesRepo.stop(id, durationMinutes);
   },
 
-  async update(id: string, updates: Partial<Pick<TimeEntry, 'duration' | 'notes'>>): Promise<TimeEntry> {
+  async update(
+    id: string,
+    updates: Partial<Pick<TimeEntry, 'duration' | 'notes' | 'start_time' | 'end_time'>>
+  ): Promise<TimeEntry> {
     return timeEntriesRepo.update(id, updates);
   },
 

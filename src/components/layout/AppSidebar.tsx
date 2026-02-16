@@ -22,11 +22,11 @@ import {
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Tasks", url: "/tasks", icon: ListTodo },
   { title: "Projects", url: "/projects", icon: FolderKanban },
+  { title: "Tasks", url: "/tasks", icon: ListTodo },
+  { title: "Time Entries", url: "/time-entries", icon: Clock },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
-  { title: "Time Entries", url: "/time-entries", icon: Clock },
 ];
 
 export function AppSidebar() {

@@ -96,7 +96,10 @@ export const timeEntriesRepo = {
     return data as TimeEntry;
   },
 
-  async update(id: string, updates: Partial<Pick<TimeEntry, 'duration' | 'notes'>>): Promise<TimeEntry> {
+  async update(
+    id: string,
+    updates: Partial<Pick<TimeEntry, 'duration' | 'notes' | 'start_time' | 'end_time'>>
+  ): Promise<TimeEntry> {
     const { data, error } = await db
       .from('time_entries')
       .update(updates)
