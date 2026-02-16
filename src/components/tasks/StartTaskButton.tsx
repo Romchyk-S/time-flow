@@ -138,7 +138,13 @@ export function StartTaskButton({
 
       // Start the timer with the updated/created task
       console.log('Starting timer for task:', taskToStart);
-      startTimer(taskToStart);
+      if (!taskToStart.id) {
+        throw new Error('Task ID is missing; cannot start timer');
+      }
+      const timerStarted = await startTimer(taskToStart);
+      if (!timerStarted) {
+        throw new Error('Failed to start timer');
+      }
 
       // Invalidate relevant queries
       console.log('Invalidating queries');

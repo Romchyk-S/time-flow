@@ -57,11 +57,10 @@ export function useTimer() {
   }, [refreshRunning]);
 
   const startTimer = useCallback(
-    async (task?: { id: string; name: string; project_id: string }, notes?: string) => {
-      if (!task) return;
+    async (task?: { id: string; name: string; project_id: string }, notes?: string): Promise<boolean> => {
+      if (!task) return false;
       try {
         // Ensure task has today in work_dates and update usage
-        await tasksRepo.addWorkDate(task.id, formatDateKey(new Date()));
         await tasksRepo.incrementUsage(task.id);
         await tasksRepo.updateLastUsed(task.id);
 
@@ -78,9 +77,11 @@ export function useTimer() {
           startTime: entry.start_time,
         });
         setError(null);
+        return true;
       } catch (err) {
         console.error('Failed to start timer:', err);
         setError('Failed to start timer');
+        throw err;
       }
     },
     [queryClient]
