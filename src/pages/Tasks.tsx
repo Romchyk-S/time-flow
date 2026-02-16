@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, ListTodo } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, Calendar as CalendarIcon, ListTodo, Pencil } from 'lucide-react';
 import { useTasksForDate } from '@/state/hooks/useTasksForDate';
 import { TasksHoverGrid } from '@/components/tasks/TasksHoverGrid';
 import { formatDateKey } from '@/state/utils/dateUtils';
@@ -18,7 +18,7 @@ import { timeEntriesClient } from '@/api/clients/timeEntriesClient';
 import { useQuery } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { formatDuration, minutesToDurationInput, parseDurationToMinutes } from '@/state/utils/timeUtils';
+import { formatDuration } from '@/state/utils/timeUtils';
 import {
   Dialog,
   DialogContent,
@@ -71,44 +71,6 @@ export default function TasksPage() {
     }
   };
 
-  const handleStartEditEntryDuration = (entryId: string, currentMinutes: number) => {
-    setEditingEntryId(entryId);
-    setEditingDurationValue(minutesToDurationInput(currentMinutes));
-  };
-
-  const handleCancelEditEntryDuration = () => {
-    setEditingEntryId(null);
-    setEditingDurationValue('');
-  };
-
-  const handleSaveEntryDuration = async () => {
-    if (!editingEntryId) return;
-    const minutes = parseDurationToMinutes(editingDurationValue);
-    if (minutes < 0) {
-      toast({
-        title: 'Invalid duration',
-        description: 'Enter a valid H:MM duration',
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      await timeEntriesClient.update(editingEntryId, { duration: minutes });
-      await taskEntriesQuery.refetch();
-      await refetch();
-      toast({ title: 'Entry duration updated' });
-    } catch (error) {
-      console.error('Failed to update entry duration:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update entry duration',
-        variant: 'destructive',
-      });
-    } finally {
-      handleCancelEditEntryDuration();
-    }
-  };
-
   const handleDeleteEntry = async (entryId: string) => {
     if (!confirm('Delete this time entry?')) return;
     try {
@@ -146,8 +108,12 @@ export default function TasksPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
-  const [editingDurationValue, setEditingDurationValue] = useState('');
+  const [editEntryDialogOpen, setEditEntryDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<null | { id: string; startTime: string; endTime: string | null }>(
+    null,
+  );
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
 
   const taskEntriesQuery = useQuery({
     queryKey: ['time-entries-by-task', currentTask.id],
@@ -157,6 +123,56 @@ export default function TasksPage() {
     },
     enabled: isTaskDialogOpen && isEditMode && !!currentTask.id,
   });
+
+  const openEditEntryDialog = (entry: { id: string; start_time: string; end_time: string | null }) => {
+    setEditingEntry({ id: entry.id, startTime: entry.start_time, endTime: entry.end_time });
+    const start = new Date(entry.start_time);
+    const end = entry.end_time ? new Date(entry.end_time) : new Date();
+    const startStr = `${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`;
+    const endStr = `${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`;
+    setEditStart(startStr);
+    setEditEnd(endStr);
+    setEditEntryDialogOpen(true);
+  };
+
+  const saveEditEntryDialog = async () => {
+    if (!editingEntry) return;
+    const [sh, sm] = editStart.split(':').map((v) => parseInt(v, 10));
+    const [eh, em] = editEnd.split(':').map((v) => parseInt(v, 10));
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) {
+      toast({ title: 'Invalid time', description: 'Use HH:MM', variant: 'destructive' });
+      return;
+    }
+
+    const baseDate = new Date(editingEntry.startTime);
+    const start = new Date(baseDate);
+    start.setHours(sh, sm, 0, 0);
+
+    const end = new Date(baseDate);
+    end.setHours(eh, em, 0, 0);
+    if (end.getTime() <= start.getTime()) {
+      toast({ title: 'Invalid range', description: 'End must be after start', variant: 'destructive' });
+      return;
+    }
+
+    const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+
+    try {
+      await timeEntriesClient.update(editingEntry.id, {
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        duration: durationMinutes,
+      });
+      await taskEntriesQuery.refetch();
+      await refetch();
+      toast({ title: 'Entry updated' });
+      setEditEntryDialogOpen(false);
+      setEditingEntry(null);
+    } catch (error) {
+      console.error('Failed to update entry:', error);
+      toast({ title: 'Error', description: 'Failed to update entry', variant: 'destructive' });
+    }
+  };
 
   // Open create task dialog
   const openCreateDialog = () => {
@@ -483,7 +499,6 @@ export default function TasksPage() {
                           .slice()
                           .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
                           .map((e) => {
-                            const isEditing = editingEntryId === e.id;
                             const timeRange = e.end_time
                               ? `${new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(e.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                               : 'Running...';
@@ -494,31 +509,17 @@ export default function TasksPage() {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                  {isEditing ? (
-                                    <span className="flex items-center gap-1">
-                                      <input
-                                        type="text"
-                                        className="w-16 rounded border px-1 py-0.5 text-xs font-mono"
-                                        value={editingDurationValue}
-                                        onChange={(ev) => setEditingDurationValue(ev.target.value)}
-                                        onKeyDown={(ev) => {
-                                          if (ev.key === 'Enter') handleSaveEntryDuration();
-                                          if (ev.key === 'Escape') handleCancelEditEntryDuration();
-                                        }}
-                                        autoFocus
-                                      />
-                                      <button type="button" onClick={handleSaveEntryDuration} className="text-primary text-xs">Save</button>
-                                      <button type="button" onClick={handleCancelEditEntryDuration} className="text-muted-foreground text-xs">Cancel</button>
-                                    </span>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      className="font-mono text-xs hover:underline"
-                                      onClick={() => handleStartEditEntryDuration(e.id, e.duration ?? 0)}
-                                    >
-                                      {formatDuration(e.duration ?? 0)}
-                                    </button>
-                                  )}
+                                  <span className="font-mono text-xs">{formatDuration(e.duration ?? 0)}</span>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => openEditEntryDialog(e)}
+                                    title="Edit time"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
 
                                   <Button
                                     variant="ghost"
@@ -543,6 +544,42 @@ export default function TasksPage() {
               </>
             ) : null}
           </div>
+          <Dialog open={editEntryDialogOpen} onOpenChange={setEditEntryDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit time entry</DialogTitle>
+                <DialogDescription />
+              </DialogHeader>
+
+              <div className="grid gap-4 py-2">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="start" className="text-right">Start</Label>
+                  <Input
+                    id="start"
+                    className="col-span-3 font-mono"
+                    value={editStart}
+                    onChange={(e) => setEditStart(e.target.value)}
+                    placeholder="HH:MM"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="end" className="text-right">End</Label>
+                  <Input
+                    id="end"
+                    className="col-span-3 font-mono"
+                    value={editEnd}
+                    onChange={(e) => setEditEnd(e.target.value)}
+                    placeholder="HH:MM"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditEntryDialogOpen(false)}>Cancel</Button>
+                <Button onClick={saveEditEntryDialog}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <DialogFooter>
             {isEditMode && (
               <Button
