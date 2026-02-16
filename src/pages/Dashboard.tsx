@@ -82,50 +82,24 @@ const Dashboard = () => {
   const recentTasksQuery = useQuery({
     queryKey: ["recent-tasks"],
     queryFn: async () => {
-      const tasks = await tasksClient.getAll();
-
       const minTasks = 6;
       const maxDaysBack = 30;
       const now = new Date();
 
-      const selected: TaskWithProject[] = [];
-      const seen = new Set<string>();
-
-      for (let i = 0; i <= maxDaysBack && selected.length < minTasks; i++) {
-        const day = subDays(now, i);
-        const dateKey = formatDateKey(day);
-
-        const matches = tasks.filter((t) => (t.work_dates ?? []).includes(dateKey));
-        console.log(`[recent-tasks] dateKey=${dateKey} matches=${matches.length}`);
-
-        for (const t of matches) {
-          if (seen.has(t.id)) continue;
-          seen.add(t.id);
-          selected.push(t as TaskWithProject);
-          if (selected.length >= minTasks) break;
-        }
+      const dateKeys: string[] = [];
+      for (let i = 0; i <= maxDaysBack; i++) {
+        dateKeys.push(formatDateKey(subDays(now, i)));
       }
 
-      // If still empty, fall back to the existing 'today' heuristic for visibility
-      if (selected.length === 0) {
-        const taskIdsFromToday = new Set(
-          (todayEntries.data ?? []).map((entry) => (entry as { task_id: string }).task_id)
-        );
-        const fallback = tasks.filter(
-          (task) =>
-            taskIdsFromToday.has(task.id) ||
-            (task.last_used && new Date(task.last_used) >= new Date(todayStartStr))
-        );
-        console.log(`[recent-tasks] fallbackUsed count=${fallback.length}`);
-        return fallback as TaskWithProject[];
-      }
+      console.log(`[recent-tasks] querying overlaps for dateKeys[0]=${dateKeys[0]}.. len=${dateKeys.length}`);
+      const recent = await tasksClient.getRecentActivity({
+        dateKeys,
+        limit: minTasks,
+        includeCompleted: false,
+      });
 
-      selected.sort(
-        (a, b) =>
-          new Date(b.last_used || 0).getTime() - new Date(a.last_used || 0).getTime()
-      );
-      console.log(`[recent-tasks] selectedUnique=${selected.length}`);
-      return selected;
+      console.log(`[recent-tasks] received count=${recent.length}`);
+      return recent as TaskWithProject[];
     },
     enabled: !!todayEntries.data,
   });

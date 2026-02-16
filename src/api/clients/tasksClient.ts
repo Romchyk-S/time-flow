@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Task, TaskStatus } from "@/types";
 
+const supabaseAny = supabase as any;
+
 // Define the database task type that matches our actual database schema
 type DbTask = {
   id: string;
@@ -28,6 +30,7 @@ const mapDbTaskToAppTask = (dbTask: DbTask): Task => ({
   project_id: dbTask.project_id,
   status: dbTask.status,
   is_active: dbTask.is_active,
+  usage_count: dbTask.usage_count,
   last_used: dbTask.last_used,
   work_dates: dbTask.work_dates || [],
   total_duration: dbTask.total_duration || 0,
@@ -53,7 +56,7 @@ export const tasksClient = {
     projectId: string,
     options?: { isActive?: boolean; searchTerm?: string; limit?: number }
   ): Promise<Task[]> {
-    let q = supabase
+    let q = supabaseAny
       .from("tasks")
       .select("*")
       .eq("project_id", projectId)
@@ -79,7 +82,7 @@ export const tasksClient = {
   },
 
   async findByNameAndProject(name: string, projectId: string): Promise<Task | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from('tasks')
       .select('*')
       .eq('name', name.trim())
@@ -91,7 +94,7 @@ export const tasksClient = {
   },
 
   async getById(id: string): Promise<Task | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from("tasks")
       .select("*")
       .eq("id", id)
@@ -106,7 +109,7 @@ export const tasksClient = {
   },
 
   async getAll(): Promise<Task[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from("tasks")
       .select("*, project:projects(*)")
       .neq("status", 'completed')
@@ -134,6 +137,79 @@ export const tasksClient = {
     });
   },
 
+  async getRecentActivity(options: {
+    dateKeys: string[];
+    limit?: number;
+    includeCompleted?: boolean;
+  }): Promise<Task[]> {
+    const limit = options.limit ?? 6;
+
+    let q = supabaseAny
+      .from("tasks")
+      .select("*, project:projects(*)")
+      .overlaps("work_dates", options.dateKeys)
+      .order("last_used", { ascending: false, nullsFirst: false })
+      .limit(limit);
+
+    if (!options.includeCompleted) {
+      q = q.neq("status", "completed");
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const mapped = (data || []).map((task: any) => {
+      const mappedTask = mapDbTaskToAppTask(task);
+      if (task.project) {
+        return {
+          ...mappedTask,
+          project: {
+            id: task.project.id,
+            name: task.project.name,
+            description: task.project.description,
+            color: task.project.color || "#000000",
+            created_at: task.project.created_at,
+            updated_at: task.project.updated_at,
+          },
+        };
+      }
+      return mappedTask;
+    });
+
+    if (mapped.length >= limit) return mapped;
+
+    let qFallback = supabaseAny
+      .from("tasks")
+      .select("*, project:projects(*)")
+      .order("last_used", { ascending: false, nullsFirst: false })
+      .limit(limit);
+
+    if (!options.includeCompleted) {
+      qFallback = qFallback.neq("status", "completed");
+    }
+
+    const { data: fbData, error: fbError } = await qFallback;
+    if (fbError) throw fbError;
+
+    return (fbData || []).map((task: any) => {
+      const mappedTask = mapDbTaskToAppTask(task);
+      if (task.project) {
+        return {
+          ...mappedTask,
+          project: {
+            id: task.project.id,
+            name: task.project.name,
+            description: task.project.description,
+            color: task.project.color || "#000000",
+            created_at: task.project.created_at,
+            updated_at: task.project.updated_at,
+          },
+        };
+      }
+      return mappedTask;
+    });
+  },
+
   async create(input: {
     name: string;
     project_id: string;
@@ -154,7 +230,7 @@ export const tasksClient = {
       last_used: null
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from('tasks')
       .insert(taskToCreate)
       .select()
@@ -177,7 +253,7 @@ export const tasksClient = {
     if (dates.includes(dateKey)) return task;
     
     const next = [...dates, dateKey].sort();
-    const { data, error } = await (supabase
+    const { data, error } = await (supabaseAny
       .from("tasks")
       .update({ work_dates: next } as any) // Workaround for type issue
       .eq("id", taskId)
@@ -198,7 +274,7 @@ export const tasksClient = {
     const dbUpdates: Partial<DbTask> = { ...updates };
     dbUpdates.updated_at = new Date().toISOString();
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from('tasks')
       .update(dbUpdates)
       .eq('id', id)
@@ -213,7 +289,7 @@ export const tasksClient = {
   
   async incrementUsage(taskId: string): Promise<Task> {
     // First update the usage count
-    const { data: taskData } = await supabase
+    const { data: taskData } = await supabaseAny
       .from('tasks')
       .select('usage_count')
       .eq('id', taskId)
@@ -221,7 +297,7 @@ export const tasksClient = {
       
     if (!taskData) throw new Error('Task not found');
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from('tasks')
       .update({ 
         usage_count: (taskData.usage_count || 0) + 1,
@@ -238,7 +314,7 @@ export const tasksClient = {
   
   async updateLastUsed(taskId: string): Promise<void> {
     const now = new Date().toISOString();
-    const { error } = await supabase
+    const { error } = await supabaseAny
       .from('tasks')
       .update({ 
         last_used: now, 
@@ -253,7 +329,7 @@ export const tasksClient = {
     const minutes = Math.ceil(seconds / 60);
     
     // First get the current duration
-    const { data: taskData } = await supabase
+    const { data: taskData } = await supabaseAny
       .from('tasks')
       .select('total_duration')
       .eq('id', taskId)
@@ -262,7 +338,7 @@ export const tasksClient = {
     if (!taskData) throw new Error('Task not found');
     
     // Update the duration directly
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAny
       .from('tasks')
       .update({ 
         total_duration: (taskData.total_duration || 0) + minutes,
@@ -278,7 +354,7 @@ export const tasksClient = {
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await supabaseAny.from("tasks").delete().eq("id", id);
     if (error) throw error;
   },
 
@@ -295,7 +371,7 @@ export const tasksClient = {
     try {
       // First try using the RPC function
       try {
-        const { data, error } = await supabase.rpc('increment_task_duration', {
+        const { data, error } = await supabaseAny.rpc('increment_task_duration', {
           task_id: id,
           duration_seconds: duration
         });
@@ -315,7 +391,7 @@ export const tasksClient = {
       
       // Fallback: Get the current task and update it directly
       console.log('[TasksClient] Falling back to direct task update');
-      const { data: task, error: fetchError } = await supabase
+      const { data: task, error: fetchError } = await supabaseAny
         .from('tasks')
         .select('*')
         .eq('id', id)
@@ -338,7 +414,7 @@ export const tasksClient = {
       });
       
       // Update the task directly
-      const { data: updatedTask, error: updateError } = await supabase
+      const { data: updatedTask, error: updateError } = await supabaseAny
         .from('tasks')
         .update({ 
           total_duration: newDuration,
@@ -366,7 +442,7 @@ export const tasksClient = {
       // If all else fails, try a minimal update
       try {
         console.log('[TasksClient] Attempting minimal update to record task usage');
-        const { data: task } = await supabase
+        const { data: task } = await supabaseAny
           .from('tasks')
           .update({ 
             last_used: new Date().toISOString(),
