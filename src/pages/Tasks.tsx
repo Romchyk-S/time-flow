@@ -499,9 +499,10 @@ export default function TasksPage() {
                           .slice()
                           .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
                           .map((e) => {
+                            const dateLabel = format(new Date(e.start_time), 'yyyy-MM-dd');
                             const timeRange = e.end_time
-                              ? `${new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(e.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                              : 'Running...';
+                              ? `${dateLabel} ${new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(e.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                              : `${dateLabel} ${new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - Running...`;
                             return (
                               <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                                 <div className="min-w-0">

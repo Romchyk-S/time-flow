@@ -71,36 +71,6 @@ function ProjectsContent() {
     });
   }, [projects, isLoading, isError, isSuccess, error]);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="p-4">
-        <div>Loading projects...</div>
-        <div className="text-sm text-muted-foreground">
-          {projectList.length} projects currently loaded
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate derived state after hooks and before any conditional returns
-  const usedColors = projectList.map((p) => p.color);
-
-  // Show error state
-  if (isError) {
-    console.error('Error loading projects:', error);
-    return (
-      <div className="p-4 text-destructive">
-        <div>Error loading projects. Please try again.</div>
-        {error && (
-          <div className="mt-2 p-2 bg-destructive/10 rounded text-sm">
-            {error instanceof Error ? error.message : 'Unknown error'}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   const handleCreate = useCallback(async (data: { name: string; description: string; color: string }) => {
     await projectsClient.create(data);
     invalidate();
@@ -149,6 +119,9 @@ function ProjectsContent() {
     setDialogOpen(true);
   };
 
+  // Derived values (safe even when loading/error)
+  const usedColors = projectList.map((p) => p.color);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -164,7 +137,23 @@ function ProjectsContent() {
 
       <Card>
         <CardContent className="py-6">
-          {projectList.length === 0 ? (
+          {isLoading ? (
+            <div className="p-4">
+              <div>Loading projects...</div>
+              <div className="text-sm text-muted-foreground">
+                {projectList.length} projects currently loaded
+              </div>
+            </div>
+          ) : isError ? (
+            <div className="p-4 text-destructive">
+              <div>Error loading projects. Please try again.</div>
+              {error && (
+                <div className="mt-2 p-2 bg-destructive/10 rounded text-sm">
+                  {error instanceof Error ? error.message : 'Unknown error'}
+                </div>
+              )}
+            </div>
+          ) : projectList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <FolderKanban className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium">No projects yet</h3>
