@@ -7,7 +7,8 @@
     "build": "tsc && vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "backfill:task-names": "node scripts/backfill-task-names.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

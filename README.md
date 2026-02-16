@@ -231,6 +231,9 @@ Unique on `(name, project_id)`.
 
 There are indexes on `tasks(project_id)`, `tasks(usage_count, last_used)`, `time_entries(task_id)`, and `time_entries(start_time)`. A trigger updates `tasks.usage_count` and `tasks.last_used` when a time entry is inserted.
 
+### `task_names`
+The app uses `task_names` for task-name autocomplete. It is kept in sync with `tasks` via a database trigger, and can be backfilled from existing tasks.
+
 ## Scripts
 
 | Command           | Description                |
@@ -240,6 +243,27 @@ There are indexes on `tasks(project_id)`, `tasks(usage_count, last_used)`, `time
 | `npm run build:dev` | Build in development mode |
 | `npm run preview` | Serve production build     |
 | `npm run lint`    | Run ESLint                 |
+| `npm run backfill:task-names` | Backfill `task_names` from existing `tasks` |
+
+### Backfill `task_names`
+This is only needed if you already have tasks in your database and want autocomplete suggestions immediately.
+
+1. Set env vars (use your **Supabase service role key**; do not expose it in the client app):
+   ```bash
+   SUPABASE_URL=...
+   SUPABASE_SERVICE_ROLE_KEY=...
+   ```
+2. Run:
+   ```bash
+   npm run backfill:task-names
+   ```
+
+Optional:
+
+- To clear and fully rebuild `task_names`:
+  ```bash
+  npm run backfill:task-names -- --truncate
+  ```
 
 ## Deployment (e.g. Vercel)
 

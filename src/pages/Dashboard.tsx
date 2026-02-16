@@ -161,8 +161,8 @@ const Dashboard = () => {
                   suggestions={suggestions}
                   onSelectSuggestion={handleSelectSuggestion}
                   loading={suggestionsLoading}
-                  disabled={isRunning}
-                  placeholder="What are you working on?"
+                  disabled={isRunning || !projectId}
+                  placeholder={projectId ? "What are you working on?" : "Select a project first"}
                 />
               </div>
             </div>
