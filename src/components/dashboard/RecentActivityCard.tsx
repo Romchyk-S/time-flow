@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { TaskWithProject } from "@/types";
 import { format } from "date-fns";
 import { StartTaskButton } from "@/components/tasks/StartTaskButton";
+import { formatDurationLong } from "@/state/utils/timeUtils";
 
 interface RecentActivityCardProps {
   task: TaskWithProject;
@@ -13,6 +14,8 @@ interface RecentActivityCardProps {
 }
 
 export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: RecentActivityCardProps) {
+  const latestDurationMinutes = (task as unknown as { latest_duration_minutes?: number | null }).latest_duration_minutes;
+
   // Log when the component renders with task details
   console.log(`[RecentActivityCard] Rendering task: ${task.name} (ID: ${task.id})`, {
     status: task.status,
@@ -54,7 +57,8 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
               {task.name}
             </CardTitle>
             <Badge 
-              className={`text-xs px-2 py-0.5 ${statusColors[task.status as keyof typeof statusColors]}`}
+              variant="outline"
+              className={`text-xs px-2 py-0.5 whitespace-nowrap transition-none border-transparent ${statusColors[task.status as keyof typeof statusColors]}`}
             >
               {statusText[task.status as keyof typeof statusText]}
             </Badge>
@@ -100,6 +104,12 @@ export function RecentActivityCard({ task, onStatusUpdate, onTaskUpdated }: Rece
               Start
             </StartTaskButton>
           </div>
+
+          {typeof latestDurationMinutes === "number" ? (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Latest run: {formatDurationLong(latestDurationMinutes * 60)}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

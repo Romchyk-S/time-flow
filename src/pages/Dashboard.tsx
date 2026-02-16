@@ -99,7 +99,11 @@ const Dashboard = () => {
       });
 
       console.log(`[recent-tasks] received count=${recent.length}`);
-      return recent as TaskWithProject[];
+      const latestDurations = await timeEntriesClient.getLatestDurationsByTaskIds(recent.map((t: any) => t.id));
+      return (recent as any[]).map((t) => ({
+        ...(t as TaskWithProject),
+        latest_duration_minutes: latestDurations[t.id] ?? null,
+      })) as TaskWithProject[];
     },
     enabled: !!todayEntries.data,
   });

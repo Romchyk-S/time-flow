@@ -26,6 +26,28 @@ export const timeEntriesClient = {
     return (data ?? []) as TimeEntry[];
   },
 
+  async getLatestDurationsByTaskIds(taskIds: string[]): Promise<Record<string, number>> {
+    const ids = Array.from(new Set(taskIds)).filter(Boolean);
+    if (!ids.length) return {};
+
+    const { data, error } = await db
+      .from("time_entries")
+      .select("task_id, duration, start_time")
+      .in("task_id", ids)
+      .not("end_time", "is", null)
+      .order("start_time", { ascending: false });
+
+    if (error) throw error;
+
+    const result: Record<string, number> = {};
+    for (const row of (data ?? []) as Array<{ task_id: string; duration: number }>) {
+      if (!row.task_id) continue;
+      if (result[row.task_id] !== undefined) continue;
+      result[row.task_id] = row.duration ?? 0;
+    }
+    return result;
+  },
+
   async getByDateRange(startDate: string, endDate: string): Promise<TimeEntry[]> {
     const { data, error } = await db
       .from("time_entries")
